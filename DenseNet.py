@@ -31,7 +31,7 @@ def Params(Func,Y,MP = True):
     params['splits_per_mod'] = splits_per_mod
     return(Runs,params)
 
-def Dense_Model(iteration,seed,Neurons,batch_size,inputs,lr=1e-4,Memory=.9,Save=False):
+def Dense_Model(params,inputs,lr=1e-4,Memory=.9,Save=False):
     import keras
     from keras.models import Sequential
     from keras.layers import Dense
@@ -41,9 +41,9 @@ def Dense_Model(iteration,seed,Neurons,batch_size,inputs,lr=1e-4,Memory=.9,Save=
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = Memory
     session = tf.Session(config=config)
-    initializer = keras.initializers.glorot_uniform(seed=iteration)
+    initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
     model = Sequential()
-    model.add(Dense(Neurons, input_dim=inputs,activation='relu',kernel_initializer=initializer))
+    model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))
     model.add(Dense(1))
     NUM_GPU = 1 # or the number of GPUs available on your machine
     adam = keras.optimizers.Adam(lr = lr)
@@ -52,16 +52,16 @@ def Dense_Model(iteration,seed,Neurons,batch_size,inputs,lr=1e-4,Memory=.9,Save=
     model.compile(loss='mean_squared_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if Save == True:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2),
-             ModelCheckpoint(filepath='Weights/'+str(iteration)+'_'+str(seed)+'.h5', monitor='val_loss', save_best_only=True)]
+             ModelCheckpoint(filepath='Weights/'+str(params['iteration'])+'_'+str(params['seed'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2)]
     return(model,callbacks)
 
-def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,iteration,seed,X_fill,Memory=None,Save = False):
+def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill,Memory=None,Save = False):
     epochs = params['epochs']
-    np.random.seed(iteration)
+    np.random.seed(params['iteration'])
     from keras import backend as K
-    Mod,callbacks = Dense_Model(iteration,seed,params['N'],X_train.shape[0],X_train.shape[1],Memory=Memory,Save=Save)
+    Mod,callbacks = Dense_Model(params,X_train.shape[1],Memory=Memory,Save=Save)
     batch_size=50#100
     Mod.fit(X_train, # Features
             y_train, # Target vector
@@ -76,7 +76,7 @@ def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,iteration,seed,
     Rsq = metrics.r2_score(y_val,Yval)
     if Save == True:
         model_json = Mod.to_json()
-        with open("Weights/model"+str(iteration)+".json", "w") as json_file:
+        with open("Weights/model"+str(params['iteration'])+".json", "w") as json_file:
             json_file.write(model_json)
         # serialize weights to HDF5
         print("Saved model to disk")
