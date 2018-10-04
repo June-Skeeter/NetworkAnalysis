@@ -56,7 +56,7 @@ def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
     model.compile(loss='mean_squared_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2),
-             ModelCheckpoint(filepath=params['Y']+'/Weights/'+str(params['Model'])+'_'+str(params['iteration'])+'_'+str(params['seed'])+'.h5', monitor='val_loss', save_best_only=True)]
+             ModelCheckpoint(filepath=params['Dpath']+params['Y']+'/Weights/'+str(params['Model'])+'_'+str(params['iteration'])+'_'+str(params['seed'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2)]
     return(model,callbacks)
@@ -80,7 +80,7 @@ def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill,Memory=N
     Rsq = metrics.r2_score(y_val,Yval)
     if params['Save']['Model'] == True:
         model_json = Mod.to_json()
-        with open(params['Y']+'/'+"Weights/"+str(params['Model'])+".json", "w") as json_file:
+        with open(params['Dpath']+params['Y']+'/'+"Weights/"+str(params['Model'])+".json", "w") as json_file:
             json_file.write(model_json)
 
         # serialize weights to HDF5
