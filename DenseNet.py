@@ -11,9 +11,9 @@ def Params(Func,Y,MP = True):
         params['proc']=1
     if Func == 'Full':
         epochs = 200
-        K = 20
-        splits_per_mod = 5
-        N = np.arange(2,15,1,dtype='int32')**1.5
+        K = 16
+        splits_per_mod = 4
+        N = np.arange(2,11,1,dtype='int32')**2
     elif Func == 'Test':
         epochs = 100
         K = 4
