@@ -11,14 +11,16 @@ def Params(Func,Y,MP = True):
         params['proc']=1
     if Func == 'Full':
         epochs = 200
-        K = 16
+        K = 20
         splits_per_mod = 4
-        N = np.arange(2,11,1,dtype='int32')**2
+        # N = np.arange(2,11,1,dtype='int32')**2
+        N = np.linspace(2,100,15,dtype='int32')
     elif Func == 'Test':
         epochs = 100
         K = 4
         splits_per_mod = 2
-        N = np.arange(2,8,2,dtype='int32')**2
+        # N = np.arange(2,11,2,dtype='int32')**2
+        N = np.linspace(2,100,5,dtype='int32')
     N = np.repeat(N,K)
     d = {'N':N.astype(int)}
     Runs = pd.DataFrame(data=d)
