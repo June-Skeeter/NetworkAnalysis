@@ -14,17 +14,17 @@ def Params(Func,Y,MP = True):
         K = 20
         splits_per_mod = 4
         # N = np.arange(2,11,1,dtype='int32')**2
-        N = np.linspace(2,100,15,dtype='int32')
+        N = np.linspace(100,10,8,dtype='int32')
     elif Func == 'Test':
         epochs = 100
         K = 4
         splits_per_mod = 2
         # N = np.arange(2,11,2,dtype='int32')**2
-        N = np.linspace(2,100,5,dtype='int32')
+        N = np.linspace(70,10,4,dtype='int32')
     N = np.repeat(N,K)
     d = {'N':N.astype(int)}
     Runs = pd.DataFrame(data=d)
-    Runs['MSE'] = 0.0
+    Runs['RMSE'] = 0.0
     Runs['R2'] = 0.0
     Runs['Model']=0
     params['K'] = K
@@ -48,8 +48,10 @@ def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
     config.gpu_options.per_process_gpu_memory_fraction = Memory
     session = tf.Session(config=config)
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
+    LeakyRelu = keras.layers.LeakyReLU(alpha=0.3)
     model = Sequential()
-    model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))
+    model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))#'relu'
+    #model.add(LeakyRelu)
     model.add(Dense(1))
     NUM_GPU = 1 # or the number of GPUs available on your machine
     adam = keras.optimizers.Adam(lr = lr)
