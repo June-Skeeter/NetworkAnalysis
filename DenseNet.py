@@ -51,7 +51,7 @@ def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
     LeakyRelu = keras.layers.LeakyReLU(alpha=0.3)
     model = Sequential()
     model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))#'relu'
-    #model.add(LeakyRelu)
+    #model.add(LeakyRelu) # - if we want to use leaky relu instead ...
     model.add(Dense(1))
     NUM_GPU = 1 # or the number of GPUs available on your machine
     adam = keras.optimizers.Adam(lr = lr)
