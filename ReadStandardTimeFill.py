@@ -5,12 +5,16 @@ from sklearn.preprocessing import StandardScaler
 
 
 class ReadStandardTimeFill:
-    def __init__(self,Path):
+    def __init__(self,Path,CombineKeys=[],Conversions=[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]):
         self.Master = pd.read_csv(Path,delimiter = ',',header = 0,na_values = -9999)
         self.Master = self.Master.set_index(pd.DatetimeIndex(pd.to_datetime(self.Master['datetime'])))
         self.Master['DOY'] = self.Master.index.dayofyear*1.0
         self.Master['HR'] = self.Master.index.hour*1.0
-        self.Master['fch4'] *= 1000
+        self.Master['fco2'] *= Conversions[0]
+        self.Master['fch4'] *= Conversions[1]
+        if len(CombineKeys) >0:
+            for i in range(0,len(CombineKeys),2):
+                self.Master[CombineKeys[i]]=self.Master[CombineKeys[i+1]].sum(axis=1)
         self.TimeSteps=0
         
     def Scale(self,y_var,X_vars):
@@ -32,8 +36,8 @@ class ReadStandardTimeFill:
         Filling = self.Master[X_vars]
         Filling = Filling.interpolate().bfill()
         Filling = Filling.interpolate().ffill()
-        XStandard = StandardScaler()
-        self.XFillScaled= XStandard.fit(Filling)
+        #XStandard = StandardScaler()
+        #self.XFillScaled= XStandard.fit(Filling)
         self.X_fill = self.XScaled.transform(Filling)
         
     def TimeShape(self,rolls):
