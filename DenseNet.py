@@ -57,7 +57,7 @@ def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
     adam = keras.optimizers.Adam(lr = lr)
     gpu_list = []
     for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
-    model.compile(loss='mean_squared_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
+    model.compile(loss='mean_absolute_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2),
              ModelCheckpoint(filepath=params['Dpath']+params['Y']+'/Weights/'+str(params['Model'])+'_'+str(params['iteration'])+'_'+str(params['seed'])+'.h5', monitor='val_loss', save_best_only=True)]
