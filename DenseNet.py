@@ -21,6 +21,12 @@ def Params(Func,Y,MP = True):
         splits_per_mod = 2
         # N = np.arange(2,11,2,dtype='int32')**2
         N = np.linspace(70,10,4,dtype='int32')
+    elif Func == 'Single':
+        epochs = 200
+        K = 1
+        splits_per_mod = 1
+        # N = np.arange(2,11,2,dtype='int32')**2
+        N = np.linspace(70,10,4,dtype='int32')
     N = np.repeat(N,K)
     d = {'N':N.astype(int)}
     Runs = pd.DataFrame(data=d)
