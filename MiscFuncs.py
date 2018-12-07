@@ -21,9 +21,9 @@ def PI(X,Xh,MSE):
     Xht = np.transpose(Xh)
     Xt = np.transpose(X)
     Xdot = np.dot(Xt,X)
-    print(Xdot)
     Xinv=np.linalg.inv(Xdot)
     SE = MSE*(np.dot(np.dot(Xht,Xinv),Xh))
+    print(SE)
     PI = (SE**2+MSE)**.5*stats.t.ppf(1-0.025,X.shape[0]-X.shape[1])
     return(PI)
 
@@ -48,6 +48,7 @@ def Map(X,dx,params,ax,color,label,RST,Derivs = True):
         ax[1].plot(data[dx],data['d'+params['Y']+'/d'+dx],(),color=color)
     else:
         ax.plot(data.index,data['Pred'],color=color,label=label)
-
+    print(params['Runs']['RMSE'].quantile(.025))
+    print(params['Runs']['RMSE'].quantile(.975))
     pred_int = PI(X_og,X.mean(axis=0),params['Runs']['RMSE'].mean()**2)
     return(ax,data['Pred'].mean(),pred_int)

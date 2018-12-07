@@ -32,6 +32,8 @@ def Params(Func,Y,MP = True):
     Runs = pd.DataFrame(data=d)
     Runs['RMSE'] = 0.0
     Runs['R2'] = 0.0
+    Runs['Mean'] = 0.0
+    Runs['Var'] = 0.0
     Runs['Model']=0
     params['K'] = K
     params['epochs'] = epochs
