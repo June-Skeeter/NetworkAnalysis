@@ -47,25 +47,52 @@ def Params(Func,Y,MP = True):
 
 def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
     import keras
+    import keras.backend as K
     from keras.models import Sequential
     from keras.layers import Dense
     from keras.wrappers.scikit_learn import KerasRegressor
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
+
+    def Variance_Loss(y_true, y_pred):
+        y_pred_std = K.std(y_pred)
+        y_sqe = (y_pred-y_true)**2 
+        var_loss = K.sum((y_pred_std-y_sqe)**2)/2
+        return var_loss
+
+    def Dual_Loss(y_true,y_pred):
+        y_pred_std = K.std(y_pred)
+        Term1 = (y_pred_std-y_true)**2/y_pred_std
+        Term2 = K.log(y_pred_std)
+        dual_loss = K.sum((Term1+Term2)**2)/2
+        return dual_loss
+
+
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = Memory
     session = tf.Session(config=config)
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
     LeakyRelu = keras.layers.LeakyReLU(alpha=0.3)
     model = Sequential()
-    model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))#'relu'
-    #model.add(LeakyRelu) # - if we want to use leaky relu instead ...
-    model.add(Dense(1))
-    NUM_GPU = 1 # or the number of GPUs available on your machine
-    adam = keras.optimizers.Adam(lr = lr)
-    gpu_list = []
-    for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
-    model.compile(loss='mean_absolute_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
+    if params['Loss'] != 'MAE':
+        model.add(Dense(params['N'], input_dim=inputs,activation='sigmoid',kernel_initializer=initializer))#'relu'
+        #model.add(LeakyRelu) # - if we want to use leaky relu instead ...
+        model.add(Dense(1))
+        NUM_GPU = 1 # or the number of GPUs available on your machin
+        adam = keras.optimizers.Adam(lr = lr)
+        gpu_list = []
+        for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
+        model.compile(loss=Variance_Loss, optimizer='adam')#'mean_absolute_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
+    else:
+        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))#'relu'
+        #model.add(LeakyRelu) # - if we want to use leaky relu instead ...
+        model.add(Dense(1))
+        NUM_GPU = 1 # or the number of GPUs available on your machin
+        adam = keras.optimizers.Adam(lr = lr)
+        gpu_list = []
+        for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
+        model.compile(loss='mean_absolute_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
+    
     if params['Save']['Weights'] == True:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2),
              ModelCheckpoint(filepath=params['Dpath']+params['Y']+'/Weights/'+str(params['Model'])+'_'+str(params['iteration'])+'_'+str(params['seed'])+'.h5', monitor='val_loss', save_best_only=True)]
