@@ -46,6 +46,7 @@ def Params(Func,Y,MP = True):
     return(Runs,params)
 
 def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
+    print(__name__)
     import keras
     import keras.backend as K
     from keras.models import Sequential

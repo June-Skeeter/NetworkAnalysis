@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd 
 from sklearn.preprocessing import StandardScaler
 
-
-
 class ReadStandardTimeFill:
     def __init__(self,Path,CombineKeys=[],Conversions=[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]):
         self.Master = pd.read_csv(Path,delimiter = ',',header = 0,na_values = -9999)
