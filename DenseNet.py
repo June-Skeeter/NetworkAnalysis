@@ -3,8 +3,10 @@ import pandas as pd
 import math
 from sklearn import metrics
 from matplotlib import pyplot as plt
+from sklearn.model_selection import train_test_split
+from functools import partial
 
-def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
+def Dense_Model(params,inputs,lr=1e-4):
     import keras
     import keras.backend as K
     from keras.models import Sequential
@@ -26,14 +28,13 @@ def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
         dual_loss = K.sum((Term1+Term2)**2)/2
         return dual_loss
 
-
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = Memory
+    config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.Session(config=config)
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
     LeakyRelu = keras.layers.LeakyReLU(alpha=0.3)
     model = Sequential()
-    if params['Loss'] != 'MAE':
+    if params['Loss'] != 'mean_absolute_error':
         model.add(Dense(params['N'], input_dim=inputs,activation='sigmoid',kernel_initializer=initializer))#'relu'
         #model.add(LeakyRelu) # - if we want to use leaky relu instead ...
         model.add(Dense(1))
@@ -59,11 +60,11 @@ def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
         callbacks = [EarlyStopping(monitor='val_loss', patience=2)]
     return(model,callbacks)
 
-def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill,Memory=None):
+def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill):
     epochs = params['epochs']
     np.random.seed(params['iteration'])
     from keras import backend as K
-    Mod,callbacks = Dense_Model(params,X_train.shape[1],Memory=Memory)
+    Mod,callbacks = Dense_Model(params,X_train.shape[1])
     batch_size=50#100
     Mod.fit(X_train, # Features
             y_train, # Target vector
@@ -86,3 +87,27 @@ def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill,Memory=N
         params['Save']['Model'] = False
     return(y_fill,Yval)#,y_val,Rsq)
     #return(MSE,y_fill,Yval,y_val,Rsq)
+
+def TTV_Split(iteration,params,X,y,X_fill):
+    params['seed'] = int(iteration%params['splits_per_mod']/params['splits_per_mod']*100)
+    params['iteration'] = int(iteration/params['splits_per_mod'])
+    X_train,X_test,y_train,y_test=train_test_split(X,y, test_size=0.1, random_state=params['seed'])
+    X_train,X_val,y_train,y_val=train_test_split(X_train,y_train, test_size=0.11, random_state=params['seed'])
+    return(Train_Steps(params,X_train,X_test,X_val,y_train,y_test,
+        y_val,X_fill = X_fill),
+        y_val)
+
+def RunNN(params,X,y,X_fill,pool=None):
+    params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
+    params['Memory'] = .25
+    print(params['Memory'])
+    Res = [] 
+    if pool == None:
+        for i in range(params['K']):
+            Res.append(TTV_Split(i,params,X,y,X_fill))
+
+    else:
+        for i,results in enumerate(pool.imap(partial(TTV_Split,params=params,X=X,y=y,X_fill=X_fill),range(params['K']))):
+            Res.append(results)
+            print(results)
+    print(Res)

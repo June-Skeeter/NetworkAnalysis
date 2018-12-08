@@ -1,13 +1,34 @@
+import math
 import numpy as np
 import pandas as pd
 from scipy import stats
+import DenseNet as Dense
+
 from keras.models import model_from_json
 
-def Params(Func,Y,MP = True):
+from functools import partial
+
+def Func(i,params,X,y,X_fill):
+    return(i)
+
+def RunNN(params,X,y,X_fill,pool=None):
+    params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
+
+    Res = [] 
+    if pool == None:
+        for i in range(params['K']):
+            Res.append(Dense.TTV_Split(i,params,X,y,X_fill))
+
+    else:
+        for i,results in enumerate(pool.imap(partial(Dense.TTV_Split,params=params,X=X,y=y,X_fill=X_fill),range(params['K']))):
+            Res.append(results)
+            print(results)
+    print('Done!')
+
+def Params(Func,Y,MP = True,processes = 3):
     params = {}
-    params['proc']=3
-    if MP == False:
-        params['proc']=1
+    if MP == False:params['proc']=1
+    else:params['proc']=processes
     if Func == 'Full':
         K = 30
         splits_per_mod = 4
@@ -32,6 +53,7 @@ def Params(Func,Y,MP = True):
     params['Save'] = {}
     params['Save']['Weights']=False
     params['Save']['Model']=False
+    params['Loss']='mean_absolute_error'
     return(Runs,params)
 
 def FactorTest(params,FullModel,Runs):
