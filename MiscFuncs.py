@@ -3,6 +3,61 @@ import pandas as pd
 from scipy import stats
 from keras.models import model_from_json
 
+def Params(Func,Y,MP = True):
+    params = {}
+    params['proc']=3
+    if MP == False:
+        params['proc']=1
+    if Func == 'Full':
+        K = 30
+        splits_per_mod = 4
+        N = np.linspace(100,10,8,dtype='int32')
+    elif Func == 'Test':
+        K = 4
+        splits_per_mod = 2
+        N = np.linspace(70,10,4,dtype='int32')
+    elif Func == 'Single':
+        K = 1
+        splits_per_mod = 1
+        N = np.linspace(70,10,4,dtype='int32')
+    N = np.repeat(N,K)
+    d = {'N':N.astype(int)}
+    Runs = pd.DataFrame(data=d)
+    for val in ['RMSE','R2','Mean','Var','Model']:
+        Runs[val] = 0
+    params['K'] = K
+    params['epochs'] = 200
+    params['Y'] = Y
+    params['splits_per_mod'] = splits_per_mod
+    params['Save'] = {}
+    params['Save']['Weights']=False
+    params['Save']['Model']=False
+    return(Runs,params)
+
+def FactorTest(params,FullModel,Runs):
+    print(params)
+    prog1 = FloatProgress(min=0, max=len(FullModel)-1,description='FactorTesting:') # instantiate the bar
+    display(prog1) # display the bar
+    Scores = pd.DataFrame()
+    ModelRuns = pd.DataFrame()
+    Start = 1
+
+
+def Combos(Model,L,factor=None,BaseFactors=[]):
+    Models=[]#BaseFactors#list()
+    for c in combinations(Model,L):
+        c = list(c)+BaseFactors
+        if factor is None:
+            Models.append(c)
+        else:
+            for f in factor:
+                f = f.split('+')
+                if set(f).issubset(set(c)) and c not in Models:
+                    Models.append(c)
+                    
+    print('Models: ',Models)
+    return(Models)
+
 def Load_Model(params):
     print(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'.json')
     json_file = open(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'.json', 'r')

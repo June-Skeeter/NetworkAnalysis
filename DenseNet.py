@@ -4,49 +4,7 @@ import math
 from sklearn import metrics
 from matplotlib import pyplot as plt
 
-def Params(Func,Y,MP = True):
-    params = {}
-    params['proc']=3
-    if MP == False:
-        params['proc']=1
-    if Func == 'Full':
-        epochs = 200
-        K = 20
-        splits_per_mod = 4
-        # N = np.arange(2,11,1,dtype='int32')**2
-        N = np.linspace(100,10,8,dtype='int32')
-    elif Func == 'Test':
-        epochs = 100
-        K = 4
-        splits_per_mod = 2
-        # N = np.arange(2,11,2,dtype='int32')**2
-        N = np.linspace(70,10,4,dtype='int32')
-    elif Func == 'Single':
-        epochs = 200
-        K = 1
-        splits_per_mod = 1
-        # N = np.arange(2,11,2,dtype='int32')**2
-        N = np.linspace(70,10,4,dtype='int32')
-    N = np.repeat(N,K)
-    d = {'N':N.astype(int)}
-    Runs = pd.DataFrame(data=d)
-    Runs['RMSE'] = 0.0
-    Runs['R2'] = 0.0
-    Runs['Mean'] = 0.0
-    Runs['Var'] = 0.0
-    Runs['Model']=0
-    params['K'] = K
-    params['epochs'] = epochs
-    params['Y'] = Y
-    params['splits_per_mod'] = splits_per_mod
-    params['Save'] = {}
-    params['Save']['Weights']=False
-    params['Save']['Model']=False
-    
-    return(Runs,params)
-
 def Dense_Model(params,inputs,lr=1e-4,Memory=.9):
-    print(__name__)
     import keras
     import keras.backend as K
     from keras.models import Sequential
