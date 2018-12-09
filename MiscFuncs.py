@@ -56,14 +56,6 @@ def Params(Func,Y,MP = True,processes = 3):
     params['Loss']='mean_absolute_error'
     return(Runs,params)
 
-def FactorTest(params,FullModel,Runs):
-    print(params)
-    prog1 = FloatProgress(min=0, max=len(FullModel)-1,description='FactorTesting:') # instantiate the bar
-    display(prog1) # display the bar
-    Scores = pd.DataFrame()
-    ModelRuns = pd.DataFrame()
-    Start = 1
-
 
 def Combos(Model,L,factor=None,BaseFactors=[]):
     Models=[]#BaseFactors#list()
@@ -88,8 +80,8 @@ def Load_Model(params):
     loaded_model = model_from_json(loaded_model_json)
     return(loaded_model)
 
-def Load_Weights(loaded_model,i,s,params):
-    loaded_model.load_weights(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'_'+str(i)+'_'+str(s)+'.h5')
+def Load_Weights(loaded_model,i,params):
+    loaded_model.load_weights(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'_'+str(i)+'.h5')
     loaded_model.compile(loss='mean_squared_error', optimizer='adam')
     return(loaded_model)
 
@@ -108,8 +100,8 @@ def PI(X,Xh,MSE):
 def Map(X,dx,params,ax,color,label,RST,Derivs = True):
     EmptyModel = Load_Model(params)
     results = []
-    for i,s in zip(params['Runs']['iteration'],params['Runs']['seed']):
-        Model = Load_Weights(EmptyModel,i,s,params) 
+    for i in params['Runs']['iteration']:
+        Model = Load_Weights(EmptyModel,i,params) 
         Yfill=RST.YScaled.inverse_transform(Model.predict(X).reshape(-1,1))
         results.append(Yfill)
     y = np.asanyarray(results).mean(axis=0)    

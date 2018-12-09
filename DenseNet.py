@@ -55,7 +55,7 @@ def Dense_Model(params,inputs,lr=1e-4):
     
     if params['Save']['Weights'] == True:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2),
-             ModelCheckpoint(filepath=params['Dpath']+params['Y']+'/Weights/'+str(params['Model'])+'_'+str(params['iteration'])+'_'+str(params['seed'])+'.h5', monitor='val_loss', save_best_only=True)]
+             ModelCheckpoint(filepath=params['Dpath']+params['Y']+'/Weights/'+str(params['Model'])+'_'+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=2)]
     return(model,callbacks)
@@ -89,25 +89,36 @@ def Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill):
     #return(MSE,y_fill,Yval,y_val,Rsq)
 
 def TTV_Split(iteration,params,X,y,X_fill):
-    params['seed'] = int(iteration%params['splits_per_mod']/params['splits_per_mod']*100)
-    params['iteration'] = int(iteration/params['splits_per_mod'])
-    X_train,X_test,y_train,y_test=train_test_split(X,y, test_size=0.1, random_state=params['seed'])
-    X_train,X_val,y_train,y_val=train_test_split(X_train,y_train, test_size=0.11, random_state=params['seed'])
-    return(Train_Steps(params,X_train,X_test,X_val,y_train,y_test,
-        y_val,X_fill = X_fill),
-        y_val)
+    # params['seed'] = int(iteration%params['splits_per_mod']/params['splits_per_mod']*100)
+    params['iteration'] = iteration#int(iteration/params['splits_per_mod'])
+    X_train,X_test,y_train,y_test=train_test_split(X,y, test_size=0.1, random_state=params['iteration'])
+    X_train,X_val,y_train,y_val=train_test_split(X_train,y_train, test_size=0.11, random_state=params['iteration'])
+    Y_fill,Y_eval=Train_Steps(params,X_train,X_test,X_val,y_train,y_test,y_val,X_fill = X_fill)
+    return(Y_fill,Y_eval,y_val)
 
-def RunNN(params,X,y,X_fill,pool=None):
+def RunNN(params,X,y,X_fill,yScale,pool=None):
     params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
     params['Memory'] = .25
     print(params['Memory'])
-    Res = [] 
+    Y_fill = []
+    Y_eval = []
+    y_val = []
     if pool == None:
         for i in range(params['K']):
-            Res.append(TTV_Split(i,params,X,y,X_fill))
+            results = TTV_Split(i,params,X,y,X_fill)
+            Y_fill.append(yScale.inverse_transform(results[0].reshape(-1,1)))
+            Y_eval.append(yScale.inverse_transform(results[1].reshape(-1,1)))
+            y_val.append(yScale.inverse_transform(results[2].reshape(-1,1)))
 
     else:
         for i,results in enumerate(pool.imap(partial(TTV_Split,params=params,X=X,y=y,X_fill=X_fill),range(params['K']))):
-            Res.append(results)
-            print(results)
-    print(Res)
+            Y_fill.append(yScale.inverse_transform(results[0].reshape(-1,1)))
+            Y_eval.append(yScale.inverse_transform(results[1].reshape(-1,1)))
+            y_val.append(yScale.inverse_transform(results[2].reshape(-1,1)))
+
+    Y_fill = np.asanyarray(Y_fill).sum(axis=-1)
+    Y_eval = np.asanyarray(Y_eval).sum(axis=-1)
+    y_val = np.asanyarray(y_val).sum(axis=-1)
+    
+
+    return(Y_fill,Y_eval,y_val)
