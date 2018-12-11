@@ -3,27 +3,9 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import DenseNet as Dense
-
 from keras.models import model_from_json
-
 from functools import partial
 
-def Func(i,params,X,y,X_fill):
-    return(i)
-
-def RunNN(params,X,y,X_fill,pool=None):
-    params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
-
-    Res = [] 
-    if pool == None:
-        for i in range(params['K']):
-            Res.append(Dense.TTV_Split(i,params,X,y,X_fill))
-
-    else:
-        for i,results in enumerate(pool.imap(partial(Dense.TTV_Split,params=params,X=X,y=y,X_fill=X_fill),range(params['K']))):
-            Res.append(results)
-            print(results)
-    print('Done!')
 
 def Params(Func,Y,MP = True,processes = 3):
     params = {}
@@ -34,7 +16,7 @@ def Params(Func,Y,MP = True,processes = 3):
         splits_per_mod = 4
         N = np.linspace(100,10,8,dtype='int32')
     elif Func == 'Test':
-        K = 4
+        K = 2
         splits_per_mod = 2
         N = np.linspace(70,10,4,dtype='int32')
     elif Func == 'Single':
@@ -54,8 +36,17 @@ def Params(Func,Y,MP = True,processes = 3):
     params['Save']['Weights']=False
     params['Save']['Model']=False
     params['Loss']='mean_absolute_error'
+    params['Memory']=.3
     return(Runs,params)
 
+def Wrap(X,y,y2):
+    Xd0,Yd0 = X.shape[0],y.shape[0]
+    Xd1,Yd1 = X.shape[1],y.shape[1]
+    Xd2 = X.shape[2]
+    Xwrap = X.reshape(Xd0*Xd1,Xd2)
+    Ywrap = y.reshape(Yd0*Yd1)
+    Y2wrap = y2.reshape(Yd0*Yd1)
+    return(Xwrap,Ywrap,Y2wrap)
 
 def Combos(Model,L,factor=None,BaseFactors=[]):
     Models=[]#BaseFactors#list()
