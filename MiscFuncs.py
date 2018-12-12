@@ -7,38 +7,6 @@ from keras.models import model_from_json
 from functools import partial
 
 
-def Params(Func,Y,MP = True,processes = 3):
-    params = {}
-    if MP == False:params['proc']=1
-    else:params['proc']=processes
-    if Func == 'Full':
-        K = 30
-        splits_per_mod = 4
-        N = np.linspace(100,10,8,dtype='int32')
-    elif Func == 'Test':
-        K = 2
-        splits_per_mod = 2
-        N = np.linspace(70,10,4,dtype='int32')
-    elif Func == 'Single':
-        K = 1
-        splits_per_mod = 1
-        N = np.linspace(70,10,4,dtype='int32')
-    N = np.repeat(N,K)
-    d = {'N':N.astype(int)}
-    Runs = pd.DataFrame(data=d)
-    for val in ['RMSE','R2','Mean','Var','Model']:
-        Runs[val] = 0
-    params['K'] = K
-    params['epochs'] = 200
-    params['Y'] = Y
-    params['splits_per_mod'] = splits_per_mod
-    params['Save'] = {}
-    params['Save']['Weights']=False
-    params['Save']['Model']=False
-    params['Loss']='mean_absolute_error'
-    params['Memory']=.3
-    return(Runs,params)
-
 def Wrap(X,y,y2):
     Xd0,Yd0 = X.shape[0],y.shape[0]
     Xd1,Yd1 = X.shape[1],y.shape[1]
@@ -64,16 +32,15 @@ def Combos(Model,L,factor=None,BaseFactors=[]):
     return(Models)
 
 def Load_Model(params):
-    print(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'.json')
-    json_file = open(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'.json', 'r')
+    json_file = open(params['Spath']+params['Sname']+'.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
     return(loaded_model)
 
-def Load_Weights(loaded_model,i,params):
-    loaded_model.load_weights(params['Dpath']+'/'+params['Y']+'/Weights/'+params['Model']+'_'+str(i)+'.h5')
-    loaded_model.compile(loss='mean_squared_error', optimizer='adam')
+def Load_Weights(loaded_model,params):
+    loaded_model.load_weights(params['Spath']+params['Sname']+'.h5')
+    loaded_model.compile(loss='mean_absolute_error', optimizer='adam')
     return(loaded_model)
 
 
