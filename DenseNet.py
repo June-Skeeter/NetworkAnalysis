@@ -5,6 +5,26 @@ from sklearn import metrics
 from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 from functools import partial
+import keras.backend as K
+from keras.models import model_from_json
+
+def Variance_Loss(y_true, y_pred):
+    y_pred_std = K.std(y_pred)
+    y_sqe = (y_pred-y_true)**2 
+    var_loss = K.sum((y_pred_std-y_sqe)**2)/2
+    return var_loss
+
+def Boot_Loss(y_true,y_pred):
+    # return (K.sum(K.log(y_pred)+y_true/y_pred)/2)
+    return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
+
+
+def Dual_Loss(y_true,y_pred):
+    y_pred_std = K.std(y_pred)
+    Term1 = (y_pred_std-y_true)**2/y_pred_std
+    Term2 = K.log(y_pred_std)
+    dual_loss = K.sum((Term1+Term2)**2)/2
+    return dual_loss
 
 def Params(Func,target,MP = True,processes = 3):
     params = {}
@@ -13,20 +33,20 @@ def Params(Func,target,MP = True,processes = 3):
     if Func == 'Full':
         K = 30
         splits_per_mod = 4
-        N = np.linspace(100,10,8,dtype='int32')
+        # N = np.linspace(100,10,8,dtype='int32')
     elif Func == 'Test':
-        K = 4
+        K = 6
         splits_per_mod = 2
-        N = np.linspace(70,10,4,dtype='int32')
+        # N = np.linspace(70,10,4,dtype='int32')
     elif Func == 'Single':
         K = 1
         splits_per_mod = 1
-        N = np.linspace(70,10,4,dtype='int32')
-    N = np.repeat(N,K)
-    d = {'N':N.astype(int)}
-    Runs = pd.DataFrame(data=d)
-    for val in ['RMSE','R2','Mean','Var','Model']:
-        Runs[val] = 0
+        # N = np.linspace(70,10,4,dtype='int32')
+    # N = np.repeat(N,K)
+    # d = {'N':N.astype(int)}
+    # Runs = pd.DataFrame(data=d)
+    # for val in ['RMSE','R2','Mean','Var','Model']:
+    #     Runs[val] = 0
     params['K'] = K
     params['epochs'] = 200
     params['target'] = target
@@ -34,67 +54,46 @@ def Params(Func,target,MP = True,processes = 3):
     params['Save'] = {}
     params['Save']['Weights']=True
     params['Save']['Model']=True
-    params['Loss']='mean_absolute_error'
+    params['Loss']='mean_squared_error'
     params['Memory']=.3
     params['Validate'] = True
-    return(Runs,params)
+    return(params)#(Runs,params)
 
 
 def Dense_Model(params,inputs,lr=1e-4,patience=2):
     import keras
-    import keras.backend as K
     from keras.models import Sequential
     from keras.layers import Dense, Activation
     from keras.wrappers.scikit_learn import KerasRegressor
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
-
-    def Variance_Loss(y_true, y_pred):
-        y_pred_std = K.std(y_pred)
-        y_sqe = (y_pred-y_true)**2 
-        var_loss = K.sum((y_pred_std-y_sqe)**2)/2
-        return var_loss
-
-    def Boot_Loss(y_true,y_pred):
-        return (K.sum(K.log(y_pred)+y_true/y_pred)/2)
-
-
-    def Dual_Loss(y_true,y_pred):
-        y_pred_std = K.std(y_pred)
-        Term1 = (y_pred_std-y_true)**2/y_pred_std
-        Term2 = K.log(y_pred_std)
-        dual_loss = K.sum((Term1+Term2)**2)/2
-        return dual_loss
-
+    from keras.constraints import nonneg
+    patience=5
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.Session(config=config)
-    initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
-    # LeakyRelu = keras.layers.LeakyReLU(alpha=0.3)
-    model = Sequential()
-    model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))#'relu'
+    model = Sequential()#'relu'
     NUM_GPU = 1 # or the number of GPUs available on your machin
     adam = keras.optimizers.Adam(lr = lr)
     gpu_list = []
+    initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
     for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
     if params['Loss'] == 'Variance_Loss':
-        model.add(Dense(1,activation='elu'))
+        # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
+        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,W_constraint=nonneg()))
+        model.add(Dense(1,activation='linear'))
         model.compile(loss=Variance_Loss, optimizer='adam')
     elif params['Loss'] == 'Boot_Loss':
-        model.add(Dense(1,activation='elu'))
+        # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
+        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,W_constraint=nonneg()))
+        model.add(Dense(1,activation='elu',W_constraint=nonneg()))
         model.compile(loss=Boot_Loss, optimizer='adam')
     else:
-        # model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))#'relu'
-        #model.add(LeakyRelu) # - if we want to use leaky relu instead ...
+        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))
         model.add(Dense(1))
-        # NUM_GPU = 1 # or the number of GPUs available on your machin
-        # adam = keras.optimizers.Adam(lr = lr)
-        # gpu_list = []
-        # for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
-        model.compile(loss='mean_absolute_error', optimizer='adam')#,context=gpu_list) # - Add if using MXNET
-        patience=2
+        model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
-        callbacks = [EarlyStopping(monitor='val_loss', patience=patience),
+        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=1),
              ModelCheckpoint(filepath=params['Spath']+params['Sname']+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
@@ -128,12 +127,12 @@ def Train_DNN(params,X_train,y_train,X_test,y_test,X_val=None):#,X_fill):
 
 def TTV_Split(iteration,params,X,y):
     params['iteration'] = iteration
-    if params['iteration']>0 and params['Loss'] != 'Variance_Loss':
+    if params['iteration']>0 and params['Loss'] != 'Variance_Loss' and params['Loss']!= 'Boot_Loss':
         params['Save']['Model'] = False
     indicies = np.arange(0,y.shape[0],dtype=int)
     ones = np.ones(y.shape[0],dtype=int)
     # print(indicies)
-    X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.7, random_state=params['iteration'])#0.2s
+    X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.3, random_state=params['iteration'])#0.2s
     if params['Validate'] == True:
         X_test,X_val,y_test,y_val,i_test,i_val,ones_test,ones_val=train_test_split(X_test,y_test,i_test,ones_test, test_size=.33, random_state=params['iteration'])#0.25s
         Y_hat=Train_DNN(params,X_train,y_train,X_test,y_test,X_val)#,X_fill = X_fill)
@@ -187,3 +186,22 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
 
 
     return(Y_hat,y_true,X_true,index,ones)
+
+
+
+def Load_Model(params):
+    json_file = open(params['Spath']+params['Sname']+'.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+    return(loaded_model)
+
+def Load_Weights(loaded_model,params):
+    loaded_model.load_weights(params['Spath']+params['Sname']+'.h5')
+    if params['Loss'] =='Boot_Loss':
+        loaded_model.compile(loss=Boot_Loss, optimizer='adam')
+    elif params['Loss']=='Variance_Loss':
+        loaded_model.compile(loss=Variance_Loss, optimizer='adam')
+    else:
+        loaded_model.compile(loss=params['Loss'], optimizer='adam')
+    return(loaded_model)

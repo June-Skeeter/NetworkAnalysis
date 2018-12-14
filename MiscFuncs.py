@@ -40,7 +40,7 @@ def Load_Model(params):
 
 def Load_Weights(loaded_model,params):
     loaded_model.load_weights(params['Spath']+params['Sname']+'.h5')
-    loaded_model.compile(loss='mean_absolute_error', optimizer='adam')
+    loaded_model.compile(loss=params['Loss'], optimizer='adam')
     return(loaded_model)
 
 
