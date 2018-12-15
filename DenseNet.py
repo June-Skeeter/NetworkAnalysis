@@ -80,13 +80,13 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
     if params['Loss'] == 'Variance_Loss':
         # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
-        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,W_constraint=nonneg()))
+        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
         model.add(Dense(1,activation='linear'))
         model.compile(loss=Variance_Loss, optimizer='adam')
     elif params['Loss'] == 'Boot_Loss':
         # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
-        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,W_constraint=nonneg()))
-        model.add(Dense(1,activation='elu',W_constraint=nonneg()))
+        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
+        model.add(Dense(1,activation='elu',kernel_constraint=nonneg()))
         model.compile(loss=Boot_Loss, optimizer='adam')
     else:
         model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))
@@ -94,7 +94,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
         model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=1),
-             ModelCheckpoint(filepath=params['Spath']+params['Sname']+'.h5', monitor='val_loss', save_best_only=True)]
+             ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
     return(model,callbacks)
@@ -177,6 +177,8 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
             X_true.append(XScale.inverse_transform(results[2]))
             index.append(results[3])
             ones.append(results[4])
+
+        pool.close()
 
     Y_hat = np.asanyarray(Y_hat)
     y_true = np.asanyarray(y_true)
