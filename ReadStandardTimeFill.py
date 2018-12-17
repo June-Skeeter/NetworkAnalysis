@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 class ReadStandardTimeFill:
-    def __init__(self,Path,CombineKeys=[],Conversions=[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]):
+    def __init__(self,Path,CombineKeys=[],Conversions=[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600],resample=None):
         self.Master = pd.read_csv(Path,delimiter = ',',header = 0,na_values = -9999)
         self.Master = self.Master.set_index(pd.DatetimeIndex(pd.to_datetime(self.Master['datetime'])))
         self.Master['DOY'] = self.Master.index.dayofyear*1.0
@@ -14,6 +14,8 @@ class ReadStandardTimeFill:
             for i in range(0,len(CombineKeys),2):
                 self.Master[CombineKeys[i]]=self.Master[CombineKeys[i+1]].sum(axis=1)
         self.TimeSteps=0
+        if resample != None:
+            self.Master=self.Master.resample(resample).mean()
         
     def Scale(self,y_var,X_vars):
         self.y_var = y_var

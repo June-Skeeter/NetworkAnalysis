@@ -8,23 +8,23 @@ from functools import partial
 import keras.backend as K
 from keras.models import model_from_json
 
-def Variance_Loss(y_true, y_pred):
-    y_pred_std = K.std(y_pred)
-    y_sqe = (y_pred-y_true)**2 
-    var_loss = K.sum((y_pred_std-y_sqe)**2)/2
-    return var_loss
+# def Variance_Loss(y_true, y_pred):
+#     y_pred_std = K.std(y_pred)
+#     y_sqe = (y_pred-y_true)**2 
+#     var_loss = K.sum((y_pred_std-y_sqe)**2)/2
+#     return var_loss
 
 def Boot_Loss(y_true,y_pred):
     # return (K.sum(K.log(y_pred)+y_true/y_pred)/2)
     return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
 
 
-def Dual_Loss(y_true,y_pred):
-    y_pred_std = K.std(y_pred)
-    Term1 = (y_pred_std-y_true)**2/y_pred_std
-    Term2 = K.log(y_pred_std)
-    dual_loss = K.sum((Term1+Term2)**2)/2
-    return dual_loss
+# def Dual_Loss(y_true,y_pred):
+#     y_pred_std = K.std(y_pred)
+#     Term1 = (y_pred_std-y_true)**2/y_pred_std
+#     Term2 = K.log(y_pred_std)
+#     dual_loss = K.sum((Term1+Term2)**2)/2
+#     return dual_loss
 
 def Params(Func,target,MP = True,processes = 3):
     params = {}
@@ -57,6 +57,7 @@ def Params(Func,target,MP = True,processes = 3):
     params['Loss']='mean_squared_error'
     params['Memory']=.3
     params['Validate'] = True
+    params['iteration'] = 1
     return(params)#(Runs,params)
 
 
@@ -78,12 +79,12 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     gpu_list = []
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
     for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
-    if params['Loss'] == 'Variance_Loss':
-        # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
-        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
-        model.add(Dense(1,activation='linear'))
-        model.compile(loss=Variance_Loss, optimizer='adam')
-    elif params['Loss'] == 'Boot_Loss':
+    # if params['Loss'] == 'Variance_Loss':
+    #     # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
+    #     model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
+    #     model.add(Dense(1,activation='linear'))
+    #     model.compile(loss=Variance_Loss, optimizer='adam')
+    if params['Loss'] == 'Boot_Loss':
         # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
         model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
         model.add(Dense(1,activation='elu',kernel_constraint=nonneg()))
@@ -132,9 +133,9 @@ def TTV_Split(iteration,params,X,y):
     indicies = np.arange(0,y.shape[0],dtype=int)
     ones = np.ones(y.shape[0],dtype=int)
     # print(indicies)
-    X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.3, random_state=params['iteration'])#0.2s
+    X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.2, random_state=params['iteration'])#0.2s
     if params['Validate'] == True:
-        X_test,X_val,y_test,y_val,i_test,i_val,ones_test,ones_val=train_test_split(X_test,y_test,i_test,ones_test, test_size=.33, random_state=params['iteration'])#0.25s
+        X_test,X_val,y_test,y_val,i_test,i_val,ones_test,ones_val=train_test_split(X_test,y_test,i_test,ones_test, test_size=.5, random_state=params['iteration'])#0.25s
         Y_hat=Train_DNN(params,X_train,y_train,X_test,y_test,X_val)#,X_fill = X_fill)
         y_true = np.append(y_train,y_test,axis=0)
         X_true = np.append(X_train,X_test,axis=0)
@@ -177,18 +178,40 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
             X_true.append(XScale.inverse_transform(results[2]))
             index.append(results[3])
             ones.append(results[4])
-
         pool.close()
-
-    Y_hat = np.asanyarray(Y_hat)
-    y_true = np.asanyarray(y_true)
+    Y_hat = np.squeeze(np.asanyarray(Y_hat))
+    y_true = np.squeeze(np.asanyarray(y_true))
     X_true = np.asanyarray(X_true)
     index = np.asanyarray(index)
     ones = np.asanyarray(ones)
+    Y_hat_train,Y_hat_val,y_true2,X_true2,count_train,count_val=(Sort_outputs(Y_hat,y_true,X_true,index,ones))
+    return(Y_hat_train,Y_hat_val,y_true2,
+           X_true2,count_train,count_val)
 
-
-    return(Y_hat,y_true,X_true,index,ones)
-
+def Sort_outputs(Y_hat,y_true,X_true,index,ones):
+    SortKey = np.argsort(index)
+    ones_train = ones+0.0
+    ones_val = ones*-1+1.0
+    count_train = ones_train
+    count_val = ones_val
+    ones_train[ones_train==0] = np.nan
+    ones_val[ones_val==0] = np.nan
+    Y_hat_train = Y_hat.copy()*ones_train
+    Y_hat_val = Y_hat.copy()*ones_val
+    y_true2 = y_true.copy()
+    X_true2 = X_true.copy()
+    index2 = index.copy()
+    for I in range(SortKey.shape[0]):
+        Y_hat_train[I,:]=Y_hat_train[I,SortKey[I]]
+        Y_hat_val[I,:]=Y_hat_val[I,SortKey[I]]
+        y_true2[I,:]=y_true[I,SortKey[I]]
+        for J in range(X_true2.shape[-1]):
+            X_true2[I,:,J]=X_true[I,SortKey[I],J]
+        index2[I,:]=index[I,SortKey[I]]
+        count_train[I,:] = count_train[I,SortKey[I]]
+        count_val[I,:] = count_val[I,SortKey[I]]
+    return(Y_hat_train,Y_hat_val,y_true2,
+           X_true2[0,:,],count_train,count_val)#,ones_train,ones_val)
 
 
 def Load_Model(params):
@@ -199,7 +222,7 @@ def Load_Model(params):
     return(loaded_model)
 
 def Load_Weights(loaded_model,params):
-    loaded_model.load_weights(params['Spath']+params['Sname']+'.h5')
+    loaded_model.load_weights(params['Spath']+params['Sname']+str(params['iteration'])+'.h5')
     if params['Loss'] =='Boot_Loss':
         loaded_model.compile(loss=Boot_Loss, optimizer='adam')
     elif params['Loss']=='Variance_Loss':
