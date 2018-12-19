@@ -7,24 +7,10 @@ from sklearn.model_selection import train_test_split
 from functools import partial
 import keras.backend as K
 from keras.models import model_from_json
-
-# def Variance_Loss(y_true, y_pred):
-#     y_pred_std = K.std(y_pred)
-#     y_sqe = (y_pred-y_true)**2 
-#     var_loss = K.sum((y_pred_std-y_sqe)**2)/2
-#     return var_loss
+from sklearn.preprocessing import StandardScaler,MinMaxScaler
 
 def Boot_Loss(y_true,y_pred):
-    # return (K.sum(K.log(y_pred)+y_true/y_pred)/2)
     return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
-
-
-# def Dual_Loss(y_true,y_pred):
-#     y_pred_std = K.std(y_pred)
-#     Term1 = (y_pred_std-y_true)**2/y_pred_std
-#     Term2 = K.log(y_pred_std)
-#     dual_loss = K.sum((Term1+Term2)**2)/2
-#     return dual_loss
 
 def Params(Func,target,MP = True,processes = 3):
     params = {}
@@ -33,20 +19,12 @@ def Params(Func,target,MP = True,processes = 3):
     if Func == 'Full':
         K = 30
         splits_per_mod = 4
-        # N = np.linspace(100,10,8,dtype='int32')
     elif Func == 'Test':
-        K = 6
+        K = 5
         splits_per_mod = 2
-        # N = np.linspace(70,10,4,dtype='int32')
     elif Func == 'Single':
         K = 1
         splits_per_mod = 1
-        # N = np.linspace(70,10,4,dtype='int32')
-    # N = np.repeat(N,K)
-    # d = {'N':N.astype(int)}
-    # Runs = pd.DataFrame(data=d)
-    # for val in ['RMSE','R2','Mean','Var','Model']:
-    #     Runs[val] = 0
     params['K'] = K
     params['epochs'] = 200
     params['target'] = target
@@ -58,8 +36,7 @@ def Params(Func,target,MP = True,processes = 3):
     params['Memory']=.3
     params['Validate'] = True
     params['iteration'] = 1
-    return(params)#(Runs,params)
-
+    return(params)
 
 def Dense_Model(params,inputs,lr=1e-4,patience=2):
     import keras
@@ -79,13 +56,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     gpu_list = []
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
     for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
-    # if params['Loss'] == 'Variance_Loss':
-    #     # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
-    #     model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
-    #     model.add(Dense(1,activation='linear'))
-    #     model.compile(loss=Variance_Loss, optimizer='adam')
     if params['Loss'] == 'Boot_Loss':
-        # initializer = keras.initializers.RandomUniform(minval=0.001,maxval=.01,seed=params['iteration'])
         model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
         model.add(Dense(1,activation='elu',kernel_constraint=nonneg()))
         model.compile(loss=Boot_Loss, optimizer='adam')
@@ -156,7 +127,6 @@ def TTV_Split(iteration,params,X,y):
 
 def RunNN(params,X,y,yScale,XScale,pool=None):
     params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
-    # params['Memory'] = .3
     print(params['Memory'])
     Y_hat=[]
     y_true=[]
@@ -184,11 +154,42 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
     X_true = np.asanyarray(X_true)
     index = np.asanyarray(index)
     ones = np.asanyarray(ones)
-    Y_hat_train,Y_hat_val,y_true2,X_true2,count_train,count_val=(Sort_outputs(Y_hat,y_true,X_true,index,ones))
-    return(Y_hat_train,Y_hat_val,y_true2,
-           X_true2,count_train,count_val)
+    # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
+    Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
+    print('Done!')
+    # return(Y_hat_train,Y_hat_val,y_true,
+           # X_true,count_train,count_val)
 
-def Sort_outputs(Y_hat,y_true,X_true,index,ones):
+def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
+    Y_hat_train_bar=np.nanmean(Y_hat_train,axis=0)
+    Y_hat_val_bar=np.nanmean(Y_hat_val,axis=0)
+    Y_hat_train_var = 1/(np.nansum(count_train)-1)*np.nansum((Y_hat_train - Y_hat_train_bar)**2,axis=0)
+    Y_hat_val_var = 1/(np.nansum(count_val)-1)*np.nansum((Y_hat_val - Y_hat_val_bar)**2,axis=0)
+    r2_train = np.maximum((y_true[0,:]-Y_hat_train_bar)**2-Y_hat_train_var,0)
+    r2_val = np.maximum((y_true[0,:]-Y_hat_val_bar)**2-Y_hat_val_var,0)
+
+    params['Loss'] = 'Boot_Loss'
+    params['Validate'] = False
+    params['Sname'] = 'Var'
+    params['Save']['Model'] = True
+
+    y = r2_val
+    Valid = np.where(np.isnan(y)==False)
+    y = y[Valid]
+    X = X_true[Valid]
+
+    YStandard = MinMaxScaler(feature_range=(.1, 1))
+    XStandard = StandardScaler()
+    YScaled = YStandard.fit(y.reshape(-1, 1))
+    XScaled = XStandard.fit(X)#.reshape(-1, 1))
+    y = YScaled.transform(y.reshape(-1, 1))
+    X = XScaled.transform(X)
+    init=1#int(np.random.rand(1)[0]*100)
+    Y_hat_var,y_true_var,X_true_var,index_var,ones_var = TTV_Split(init,params,X,y)
+    Y_hat_var = YScaled.inverse_transform(Y_hat_var.reshape(-1,1))
+    y_true_var = YScaled.inverse_transform(y_true_var.reshape(-1,1))
+
+def Sort_outputs(params,Y_hat,y_true,X_true,index,ones):
     SortKey = np.argsort(index)
     ones_train = ones+0.0
     ones_val = ones*-1+1.0
@@ -210,7 +211,7 @@ def Sort_outputs(Y_hat,y_true,X_true,index,ones):
         index2[I,:]=index[I,SortKey[I]]
         count_train[I,:] = count_train[I,SortKey[I]]
         count_val[I,:] = count_val[I,SortKey[I]]
-    return(Y_hat_train,Y_hat_val,y_true2,
+    Calculate_Var(params,Y_hat_train,Y_hat_val,y_true2,
            X_true2[0,:,],count_train,count_val)#,ones_train,ones_val)
 
 
