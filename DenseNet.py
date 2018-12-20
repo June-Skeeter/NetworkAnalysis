@@ -8,6 +8,7 @@ from functools import partial
 import keras.backend as K
 from keras.models import model_from_json
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
+from sklearn import metrics
 
 def Boot_Loss(y_true,y_pred):
     return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
@@ -36,6 +37,7 @@ def Params(Func,target,MP = True,processes = 3):
     params['Memory']=.3
     params['Validate'] = True
     params['iteration'] = 1
+    params['Eval'] = True
     return(params)
 
 def Dense_Model(params,inputs,lr=1e-4,patience=2):
@@ -155,8 +157,9 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
     index = np.asanyarray(index)
     ones = np.asanyarray(ones)
     # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
-    Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
-    print('Done!')
+    MSE = Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
+    print('Done!', MSE.mean())
+    return(MSE)
     # return(Y_hat_train,Y_hat_val,y_true,
            # X_true,count_train,count_val)
 
@@ -188,6 +191,14 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     Y_hat_var,y_true_var,X_true_var,index_var,ones_var = TTV_Split(init,params,X,y)
     Y_hat_var = YScaled.inverse_transform(Y_hat_var.reshape(-1,1))
     y_true_var = YScaled.inverse_transform(y_true_var.reshape(-1,1))
+    MSE = []
+    if params['Eval'] == True:
+        for i in range(params['K']):
+            Test = pd.DataFrame(data={'target':Y_hat_val[i],'y':y_true[i]}).dropna()
+            # print(Y_hat_val_bar.shape,y_true.mean(axis=0).shape)
+            MSE.append(metrics.mean_squared_error(Test['target'],Test['y']))
+    MSE = np.asanyarray(MSE)
+    return(MSE)
 
 def Sort_outputs(params,Y_hat,y_true,X_true,index,ones):
     SortKey = np.argsort(index)
@@ -211,8 +222,8 @@ def Sort_outputs(params,Y_hat,y_true,X_true,index,ones):
         index2[I,:]=index[I,SortKey[I]]
         count_train[I,:] = count_train[I,SortKey[I]]
         count_val[I,:] = count_val[I,SortKey[I]]
-    Calculate_Var(params,Y_hat_train,Y_hat_val,y_true2,
-           X_true2[0,:,],count_train,count_val)#,ones_train,ones_val)
+    return(Calculate_Var(params,Y_hat_train,Y_hat_val,y_true2,
+               X_true2[0,:,],count_train,count_val))#,ones_train,ones_val)
 
 
 def Load_Model(params):
