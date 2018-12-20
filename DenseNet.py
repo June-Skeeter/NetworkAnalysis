@@ -21,7 +21,7 @@ def Params(Func,target,MP = True,processes = 3):
         K = 30
         splits_per_mod = 4
     elif Func == 'Test':
-        K = 5
+        K = 3
         splits_per_mod = 2
     elif Func == 'Single':
         K = 1
@@ -129,7 +129,7 @@ def TTV_Split(iteration,params,X,y):
 
 def RunNN(params,X,y,yScale,XScale,pool=None):
     params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
-    print(params['Memory'])
+    # print(params['Validate'])
     Y_hat=[]
     y_true=[]
     X_true=[]
@@ -159,6 +159,7 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
     # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
     MSE = Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
     print('Done!', MSE.mean())
+    del (Y_hat,y_true,X_true,index,ones)
     return(MSE)
     # return(Y_hat_train,Y_hat_val,y_true,
            # X_true,count_train,count_val)
@@ -180,7 +181,6 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     Valid = np.where(np.isnan(y)==False)
     y = y[Valid]
     X = X_true[Valid]
-
     YStandard = MinMaxScaler(feature_range=(.1, 1))
     XStandard = StandardScaler()
     YScaled = YStandard.fit(y.reshape(-1, 1))
