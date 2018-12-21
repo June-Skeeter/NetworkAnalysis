@@ -21,7 +21,7 @@ def Params(Func,target,MP = True,processes = 3):
         K = 30
         splits_per_mod = 4
     elif Func == 'Test':
-        K = 3
+        K = 6
         splits_per_mod = 2
     elif Func == 'Single':
         K = 1
@@ -200,7 +200,7 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     MSE = np.asanyarray(MSE)
     return(MSE)
 
-def Sort_outputs(params,Y_hat,y_true,X_true,index,ones):
+def Sort_outputs(k,params,Y_hat,y_true,X_true,index,ones):
     SortKey = np.argsort(index)
     ones_train = ones+0.0
     ones_val = ones*-1+1.0
