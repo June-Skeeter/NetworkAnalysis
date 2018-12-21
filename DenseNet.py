@@ -67,7 +67,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
         model.add(Dense(1))
         model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
-        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=1),
+        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=0),
              ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
@@ -158,7 +158,7 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
     ones = np.asanyarray(ones)
     # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
     MSE = Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
-    print('Done!', MSE.mean())
+    # print('Done!', MSE.mean())
     del (Y_hat,y_true,X_true,index,ones)
     return(MSE)
     # return(Y_hat_train,Y_hat_val,y_true,
@@ -167,6 +167,7 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
 def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
     Y_hat_train_bar=np.nanmean(Y_hat_train,axis=0)
     Y_hat_val_bar=np.nanmean(Y_hat_val,axis=0)
+    print(Y_hat_val_bar)
     Y_hat_train_var = 1/(np.nansum(count_train)-1)*np.nansum((Y_hat_train - Y_hat_train_bar)**2,axis=0)
     Y_hat_val_var = 1/(np.nansum(count_val)-1)*np.nansum((Y_hat_val - Y_hat_val_bar)**2,axis=0)
     r2_train = np.maximum((y_true[0,:]-Y_hat_train_bar)**2-Y_hat_train_var,0)
