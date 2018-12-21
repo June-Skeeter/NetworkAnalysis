@@ -8,6 +8,7 @@ from functools import partial
 import keras.backend as K
 from keras.models import model_from_json
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
+from sklearn.externals import joblib
 from sklearn import metrics
 
 def Boot_Loss(y_true,y_pred):
@@ -95,8 +96,6 @@ def Train_DNN(params,X_train,y_train,X_test,y_test,X_val=None):#,X_fill):
         model_json = Mod.to_json()
         with open(params['Spath']+params['Sname']+".json", "w") as json_file:
             json_file.write(model_json)
-        # serialize weights to HDF5
-        print("Saved model to disk")
     return(Y_target)#,y_val,Rsq)
 
 def TTV_Split(iteration,params,X,y):
@@ -167,7 +166,6 @@ def RunNN(params,X,y,yScale,XScale,pool=None):
 def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
     Y_hat_train_bar=np.nanmean(Y_hat_train,axis=0)
     Y_hat_val_bar=np.nanmean(Y_hat_val,axis=0)
-    print(Y_hat_val_bar)
     Y_hat_train_var = 1/(np.nansum(count_train)-1)*np.nansum((Y_hat_train - Y_hat_train_bar)**2,axis=0)
     Y_hat_val_var = 1/(np.nansum(count_val)-1)*np.nansum((Y_hat_val - Y_hat_val_bar)**2,axis=0)
     r2_train = np.maximum((y_true[0,:]-Y_hat_train_bar)**2-Y_hat_train_var,0)
@@ -188,6 +186,12 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     XScaled = XStandard.fit(X)#.reshape(-1, 1))
     y = YScaled.transform(y.reshape(-1, 1))
     X = XScaled.transform(X)
+
+
+    scaler_filename = "YVar_scaler.save"
+    joblib.dump(YStandard, scaler_filename) 
+    scaler_filename = "XVar_scaler.save"
+    joblib.dump(XStandard, scaler_filename) 
     init=1#int(np.random.rand(1)[0]*100)
     Y_hat_var,y_true_var,X_true_var,index_var,ones_var = TTV_Split(init,params,X,y)
     Y_hat_var = YScaled.inverse_transform(Y_hat_var.reshape(-1,1))
