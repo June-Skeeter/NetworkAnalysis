@@ -126,41 +126,41 @@ def TTV_Split(iteration,params,X,y):
         ones = np.append(ones_train,ones_test)
     return(Y_hat,y_true,X_true,index,ones)
 
-def RunNN(params,X,y,yScale,XScale,pool=None):
-    params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
-    # print(params['Validate'])
-    Y_hat=[]
-    y_true=[]
-    X_true=[]
-    index=[]
-    ones=[]
-    if pool == None:
-        for i in range(params['K']):
-            results = TTV_Split(i,params,X,y)
-            Y_hat.append(yScale.inverse_transform(results[0]))
-            y_true.append(yScale.inverse_transform(results[1]))
-            X_true.append(XScale.inverse_transform(results[2]))
-            index.append(results[3])
-            ones.append(results[4])
-    else:
-        for i,results in enumerate(pool.imap(partial(TTV_Split,params=params,X=X,y=y),range(params['K']))):
-            Y_hat.append(yScale.inverse_transform(results[0]))
-            y_true.append(yScale.inverse_transform(results[1]))
-            X_true.append(XScale.inverse_transform(results[2]))
-            index.append(results[3])
-            ones.append(results[4])
-        pool.close()
-    Y_hat = np.squeeze(np.asanyarray(Y_hat))
-    y_true = np.squeeze(np.asanyarray(y_true))
-    X_true = np.asanyarray(X_true)
-    index = np.asanyarray(index)
-    ones = np.asanyarray(ones)
-    # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
-    MSE = Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
-    # print('Done!', MSE.mean())
-    del (Y_hat,y_true,X_true,index,ones)
-    return(MSE)
-    # return(Y_hat_train,Y_hat_val,y_true,
+# def RunNN(params,X,y,yScale,XScale,pool=None):
+#     params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
+#     # print(params['Validate'])
+#     Y_hat=[]
+#     y_true=[]
+#     X_true=[]
+#     index=[]
+#     ones=[]
+#     if pool == None:
+#         for i in range(params['K']):
+#             results = TTV_Split(i,params,X,y)
+#             Y_hat.append(yScale.inverse_transform(results[0]))
+#             y_true.append(yScale.inverse_transform(results[1]))
+#             X_true.append(XScale.inverse_transform(results[2]))
+#             index.append(results[3])
+#             ones.append(results[4])
+#     else:
+#         for i,results in enumerate(pool.imap(partial(TTV_Split,params=params,X=X,y=y),range(params['K']))):
+#             Y_hat.append(yScale.inverse_transform(results[0]))
+#             y_true.append(yScale.inverse_transform(results[1]))
+#             X_true.append(XScale.inverse_transform(results[2]))
+#             index.append(results[3])
+#             ones.append(results[4])
+#         pool.close()
+#     Y_hat = np.squeeze(np.asanyarray(Y_hat))
+#     y_true = np.squeeze(np.asanyarray(y_true))
+#     X_true = np.asanyarray(X_true)
+#     index = np.asanyarray(index)
+#     ones = np.asanyarray(ones)
+#     # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
+#     MSE = Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
+#     # print('Done!', MSE.mean())
+#     del (Y_hat,y_true,X_true,index,ones)
+#     return(MSE)
+#     # return(Y_hat_train,Y_hat_val,y_true,
            # X_true,count_train,count_val)
 
 def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
@@ -181,17 +181,18 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     y = y[Valid]
     X = X_true[Valid]
     YStandard = MinMaxScaler(feature_range=(.1, 1))
-    XStandard = StandardScaler()
+    # XStandard = StandardScaler()
     YScaled = YStandard.fit(y.reshape(-1, 1))
+    XStandard = joblib.load(params['Spath']+'X_scaler.save') 
     XScaled = XStandard.fit(X)#.reshape(-1, 1))
     y = YScaled.transform(y.reshape(-1, 1))
     X = XScaled.transform(X)
 
 
     scaler_filename = "YVar_scaler.save"
-    joblib.dump(YStandard, scaler_filename) 
+    joblib.dump(YStandard, params['Spath']+scaler_filename) 
     scaler_filename = "XVar_scaler.save"
-    joblib.dump(XStandard, scaler_filename) 
+    joblib.dump(XStandard, params['Spath']+scaler_filename) 
     init=1#int(np.random.rand(1)[0]*100)
     Y_hat_var,y_true_var,X_true_var,index_var,ones_var = TTV_Split(init,params,X,y)
     Y_hat_var = YScaled.inverse_transform(Y_hat_var.reshape(-1,1))
