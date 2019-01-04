@@ -19,10 +19,10 @@ def Params(Func,target,MP = True,processes = 3):
     if MP == False:params['proc']=1
     else:params['proc']=processes
     if Func == 'Full':
-        K = 30
-        splits_per_mod = 4
+        K = 39
+        splits_per_mod = 3
     elif Func == 'Test':
-        K = 6
+        K = 9
         splits_per_mod = 2
     elif Func == 'Single':
         K = 1
@@ -232,19 +232,20 @@ def Sort_outputs(k,params,Y_hat,y_true,X_true,index,ones):
                X_true2[0,:,],count_train,count_val))#,ones_train,ones_val)
 
 
-def Load_Model(params):
+def Load_Model(i,X,params):
     json_file = open(params['Spath']+params['Sname']+'.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
-    return(loaded_model)
+    # return(loaded_model)
 
-def Load_Weights(loaded_model,params):
-    loaded_model.load_weights(params['Spath']+params['Sname']+str(params['iteration'])+'.h5')
+# def Load_Weights(loaded_model,params):
+    loaded_model.load_weights(params['Spath']+params['Sname']+str(i)+'.h5')
     if params['Loss'] =='Boot_Loss':
         loaded_model.compile(loss=Boot_Loss, optimizer='adam')
     elif params['Loss']=='Variance_Loss':
         loaded_model.compile(loss=Variance_Loss, optimizer='adam')
     else:
         loaded_model.compile(loss=params['Loss'], optimizer='adam')
-    return(loaded_model)
+
+    return(loaded_model.predict(X).reshape(-1,1))
