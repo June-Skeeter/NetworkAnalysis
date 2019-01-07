@@ -23,16 +23,16 @@ class ReadStandardTimeFill:
         self.y_var = y_var
         if Project == False:
             self.Data = self.Master[np.isfinite(self.Master[y_var])]
+            self.y = self.Data[y_var].values
         self.Data = self.Data.interpolate().bfill()
         self.Data = self.Data.interpolate().ffill()
-        self.y = self.Data[y_var].values
         if ScalePath is None:
             YStandard = StandardScaler()
+            self.YScaled = YStandard.fit(self.y.reshape(-1, 1))
+            Yscale = self.YScaled.transform(self.y.reshape(-1, 1))
+            self.y = np.ndarray.flatten(Yscale)
         else:
-            YStandard = joblib.load(ScalePath+'Y_scaler.save') 
-        self.YScaled = YStandard.fit(self.y.reshape(-1, 1))
-        Yscale = self.YScaled.transform(self.y.reshape(-1, 1))
-        self.y = np.ndarray.flatten(Yscale)
+            self.YScaled = joblib.load(ScalePath+'Y_scaler.save') 
         self.Ytru = self.YScaled.inverse_transform(self.y.reshape(-1,1))
         X = self.Data[X_vars]
         self.input_shape = len(X_vars)
