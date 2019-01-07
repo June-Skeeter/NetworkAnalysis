@@ -19,7 +19,7 @@ def Params(Func,target,MP = True,processes = 3):
     if MP == False:params['proc']=1
     else:params['proc']=processes
     if Func == 'Full':
-        K = 39
+        K = 45
         splits_per_mod = 3
     elif Func == 'Test':
         K = 3
@@ -105,7 +105,7 @@ def TTV_Split(iteration,params,X,y):
     indicies = np.arange(0,y.shape[0],dtype=int)
     ones = np.ones(y.shape[0],dtype=int)
     # print(indicies)
-    X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.2, random_state=params['iteration'])#0.2s
+    X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.3, random_state=params['iteration'])#0.2s
     if params['Validate'] == True:
         X_test,X_val,y_test,y_val,i_test,i_val,ones_test,ones_val=train_test_split(X_test,y_test,i_test,ones_test, test_size=.5, random_state=params['iteration'])#0.25s
         Y_hat=Train_DNN(params,X_train,y_train,X_test,y_test,X_val)#,X_fill = X_fill)
@@ -125,43 +125,6 @@ def TTV_Split(iteration,params,X,y):
         index = np.append(i_train,i_test,axis=0)
         ones = np.append(ones_train,ones_test)
     return(Y_hat,y_true,X_true,index,ones)
-
-# def RunNN(params,X,y,yScale,XScale,pool=None):
-#     params['Memory'] = (math.floor(100/params['proc'])- 5/params['proc']) * .01
-#     # print(params['Validate'])
-#     Y_hat=[]
-#     y_true=[]
-#     X_true=[]
-#     index=[]
-#     ones=[]
-#     if pool == None:
-#         for i in range(params['K']):
-#             results = TTV_Split(i,params,X,y)
-#             Y_hat.append(yScale.inverse_transform(results[0]))
-#             y_true.append(yScale.inverse_transform(results[1]))
-#             X_true.append(XScale.inverse_transform(results[2]))
-#             index.append(results[3])
-#             ones.append(results[4])
-#     else:
-#         for i,results in enumerate(pool.imap(partial(TTV_Split,params=params,X=X,y=y),range(params['K']))):
-#             Y_hat.append(yScale.inverse_transform(results[0]))
-#             y_true.append(yScale.inverse_transform(results[1]))
-#             X_true.append(XScale.inverse_transform(results[2]))
-#             index.append(results[3])
-#             ones.append(results[4])
-#         pool.close()
-#     Y_hat = np.squeeze(np.asanyarray(Y_hat))
-#     y_true = np.squeeze(np.asanyarray(y_true))
-#     X_true = np.asanyarray(X_true)
-#     index = np.asanyarray(index)
-#     ones = np.asanyarray(ones)
-#     # Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val=(
-#     MSE = Sort_outputs(params,Y_hat,y_true,X_true,index,ones)
-#     # print('Done!', MSE.mean())
-#     del (Y_hat,y_true,X_true,index,ones)
-#     return(MSE)
-#     # return(Y_hat_train,Y_hat_val,y_true,
-           # X_true,count_train,count_val)
 
 def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
     Y_hat_train_bar=np.nanmean(Y_hat_train,axis=0)
