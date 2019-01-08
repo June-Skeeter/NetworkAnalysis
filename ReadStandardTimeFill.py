@@ -33,6 +33,7 @@ class ReadStandardTimeFill:
             self.y = np.ndarray.flatten(Yscale)
         else:
             self.YScaled = joblib.load(ScalePath+'Y_scaler.save') 
+            self.YvarScaled = joblib.load(ScalePath+'YVar_scaler.save')
         self.Ytru = self.YScaled.inverse_transform(self.y.reshape(-1,1))
         X = self.Data[X_vars]
         self.input_shape = len(X_vars)
