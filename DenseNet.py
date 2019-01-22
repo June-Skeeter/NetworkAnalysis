@@ -23,7 +23,7 @@ def Params(Func,target,MP = True,processes = 3):
         K = 30
         splits_per_mod = 3
     elif Func == 'Test':
-        K = 3
+        K = 5
         splits_per_mod = 2
     elif Func == 'Single':
         K = 1
@@ -69,7 +69,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
         model.add(Dense(1))
         model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
-        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=0),
+        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=1),
              ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
@@ -85,7 +85,7 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
             y_train, # Target vector
             epochs=epochs, # Number of epochs
             callbacks=callbacks, # Early stopping
-            verbose=1, # Print description after each epoch
+            verbose=0, # Print description after each epoch
             batch_size=batch_size, # Number of observations per batch
             # validation_data=(X_test, y_test),# Data for evaluation
             validation_split=params['validation_split']) # Validation Fracton
