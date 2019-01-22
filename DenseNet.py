@@ -10,6 +10,7 @@ from keras.models import model_from_json
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 from sklearn.externals import joblib
 from sklearn import metrics
+from sklearn.utils import resample
 
 def Boot_Loss(y_true,y_pred):
     return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
@@ -19,7 +20,7 @@ def Params(Func,target,MP = True,processes = 3):
     if MP == False:params['proc']=1
     else:params['proc']=processes
     if Func == 'Full':
-        K = 45
+        K = 30
         splits_per_mod = 3
     elif Func == 'Test':
         K = 3
@@ -28,7 +29,7 @@ def Params(Func,target,MP = True,processes = 3):
         K = 1
         splits_per_mod = 1
     params['K'] = K
-    params['epochs'] = 200
+    params['epochs'] = 300
     params['target'] = target
     params['splits_per_mod'] = splits_per_mod
     params['Save'] = {}
@@ -36,7 +37,7 @@ def Params(Func,target,MP = True,processes = 3):
     params['Save']['Model']=True
     params['Loss']='mean_squared_error'
     params['Memory']=.3
-    params['Validate'] = True
+    params['validation_split'] = .2
     params['iteration'] = 1
     params['Eval'] = True
     return(params)
@@ -49,7 +50,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
     from keras.constraints import nonneg
-    patience=5
+    patience=20
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.Session(config=config)
@@ -74,24 +75,22 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
     return(model,callbacks)
 
-def Train_DNN(params,X_train,y_train,X_test,y_test,X_val=None):#,X_fill):
+def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
     epochs = params['epochs']
     np.random.seed(params['iteration'])
     from keras import backend as K
     Mod,callbacks = Dense_Model(params,X_train.shape[1])
-    batch_size=50#100
+    batch_size=100
     Mod.fit(X_train, # Features
             y_train, # Target vector
             epochs=epochs, # Number of epochs
             callbacks=callbacks, # Early stopping
-            verbose=0, # Print description after each epoch
+            verbose=1, # Print description after each epoch
             batch_size=batch_size, # Number of observations per batch
-            validation_data=(X_test, y_test)) # Data for evaluation
-    X_train = np.append(X_train,X_test,axis=0)
-    Y_target = Mod.predict(X_train,batch_size = batch_size)
-    if params['Validate']==True:
-        Y_val = Mod.predict(X_val,batch_size = batch_size)
-        Y_target =np.append(Y_target,Y_val,axis=0)
+            # validation_data=(X_test, y_test),# Data for evaluation
+            validation_split=params['validation_split']) # Validation Fracton
+    # X_train = np.append(X_train,X_test,axis=0)
+    Y_target = Mod.predict(X,batch_size = batch_size)
     if params['Save']['Model'] == True:
         model_json = Mod.to_json()
         with open(params['Spath']+params['Sname']+".json", "w") as json_file:
@@ -104,7 +103,6 @@ def TTV_Split(iteration,params,X,y):
         params['Save']['Model'] = False
     indicies = np.arange(0,y.shape[0],dtype=int)
     ones = np.ones(y.shape[0],dtype=int)
-    # print(indicies)
     X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.3, random_state=params['iteration'])#0.2s
     if params['Validate'] == True:
         X_test,X_val,y_test,y_val,i_test,i_val,ones_test,ones_val=train_test_split(X_test,y_test,i_test,ones_test, test_size=.5, random_state=params['iteration'])#0.25s
@@ -125,6 +123,17 @@ def TTV_Split(iteration,params,X,y):
         index = np.append(i_train,i_test,axis=0)
         ones = np.append(ones_train,ones_test)
     return(Y_hat,y_true,X_true,index,ones)
+
+
+def Bootstrap(iteration,params,X,y):
+    params['iteration']=iteration
+    ones = np.ones(y.shape[0],dtype=int)
+    indicies = np.arange(0,y.shape[0],dtype=int)
+    X_train,y_train = resample(X,y, n_samples=y.shape[0])
+    Test = np.array([i for i,x in zip(indicies,y) if x.tolist() not in y_train.tolist()]) 
+    ones[Test] *= 0
+    Y_hat=Train_DNN(params,X_train,y_train,X,y)
+    return(Y_hat,y,X,ones)
 
 def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
     Y_hat_train_bar=np.nanmean(Y_hat_train,axis=0)
@@ -167,10 +176,14 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
             # print(Y_hat_val_bar.shape,y_true.mean(axis=0).shape)
             MSE.append(metrics.mean_squared_error(Test['target'],Test['y']))
     MSE = np.asanyarray(MSE)
-    return(MSE)
+    Test = pd.DataFrame(data={'target':Y_hat_val_bar,'y':y_true[i]}).dropna()
+    # print(Y_hat_val_bar.shape,y_true.mean(axis=0).shape)
+    # MSE.append(metrics.mean_squared_error(Test['target'],Test['y']))
+    mse = metrics.mean_squared_error(Test['target'],Test['y'])
+    SE = (((MSE-mse)**2).sum()/(params['K']-1))**.5
+    return(mse,SE)
 
-def Sort_outputs(k,params,Y_hat,y_true,X_true,index,ones):
-    SortKey = np.argsort(index)
+def Sort_outputs(k,params,Y_hat,y_true,X_true,ones):
     ones_train = ones+0.0
     ones_val = ones*-1+1.0
     count_train = ones_train
@@ -181,16 +194,6 @@ def Sort_outputs(k,params,Y_hat,y_true,X_true,index,ones):
     Y_hat_val = Y_hat.copy()*ones_val
     y_true2 = y_true.copy()
     X_true2 = X_true.copy()
-    index2 = index.copy()
-    for I in range(SortKey.shape[0]):
-        Y_hat_train[I,:]=Y_hat_train[I,SortKey[I]]
-        Y_hat_val[I,:]=Y_hat_val[I,SortKey[I]]
-        y_true2[I,:]=y_true[I,SortKey[I]]
-        for J in range(X_true2.shape[-1]):
-            X_true2[I,:,J]=X_true[I,SortKey[I],J]
-        index2[I,:]=index[I,SortKey[I]]
-        count_train[I,:] = count_train[I,SortKey[I]]
-        count_val[I,:] = count_val[I,SortKey[I]]
     return(Calculate_Var(params,Y_hat_train,Y_hat_val,y_true2,
                X_true2[0,:,],count_train,count_val))#,ones_train,ones_val)
 
