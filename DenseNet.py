@@ -23,13 +23,13 @@ def Params(Func,target,MP = True,processes = 3):
         K = 30
         splits_per_mod = 3
     elif Func == 'Test':
-        K = 5
+        K = 6
         splits_per_mod = 2
     elif Func == 'Single':
         K = 1
         splits_per_mod = 1
     params['K'] = K
-    params['epochs'] = 300
+    params['epochs'] = 1000
     params['target'] = target
     params['splits_per_mod'] = splits_per_mod
     params['Save'] = {}
@@ -50,7 +50,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
     from keras.constraints import nonneg
-    patience=20
+    patience=100
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.Session(config=config)
@@ -69,7 +69,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
         model.add(Dense(1))
         model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
-        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=1),
+        callbacks = [EarlyStopping(monitor='val_loss', patience=patience,verbose=0),
              ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=patience)]
