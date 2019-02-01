@@ -50,7 +50,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
     from keras.constraints import nonneg
-    patience=50
+    patience=10
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.Session(config=config)
