@@ -7,7 +7,7 @@ class ReadStandardTimeFill:
     def __init__(self,params,Name,CombineKeys=[],Conversions=[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600],resample=None):
         self.Master = pd.read_csv(params['Dpath']+Name,delimiter = ',',header = 0,na_values = -9999)
         self.Master = self.Master.set_index(pd.DatetimeIndex(pd.to_datetime(self.Master['datetime'])))
-        self.Master['DOY'] = self.Master.index.dayofyear*1.0
+        self.Master['DOY2'] = self.Master.index.dayofyear*1.0
         self.Master['HR'] = self.Master.index.hour*1.0
         self.Master['fco2'] *= Conversions[0]
         self.Master['fch4'] *= Conversions[1]

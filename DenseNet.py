@@ -23,7 +23,7 @@ def Params(Func,target,MP = True,processes = 3):
         K = 30
         splits_per_mod = 3
     elif Func == 'Test':
-        K = 3
+        K = 4
         splits_per_mod = 2
     elif Func == 'Single':
         K = 1
