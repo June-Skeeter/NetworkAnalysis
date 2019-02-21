@@ -10,6 +10,7 @@ class ReadStandardTimeFill:
         self.Master['DOY2'] = self.Master.index.dayofyear*1.0
         self.Master['HR'] = self.Master.index.hour*1.0
         self.Master['fco2'] *= Conversions[0]
+        self.Master['ER'] *= Conversions[0]
         self.Master['fch4'] *= Conversions[1]
         self.params=params
         if len(CombineKeys) >0:
