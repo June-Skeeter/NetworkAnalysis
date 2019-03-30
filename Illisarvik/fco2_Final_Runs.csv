@@ -1,0 +1,2 @@
+,Model,MSE,Size,Number,SE,Performance
+99_99,wind_speed+PPFD_Avg+VPD+AirTC_Avg+VWC+Temp+Sedge+Grass+Shrub+Sparse+Upland,0.029654466759066526,99,99,0.006804112558125557,0
