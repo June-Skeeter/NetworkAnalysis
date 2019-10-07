@@ -1,2 +1,2 @@
 ,Model,MSE,Size,Number,SE,Performance
-99_99,PPFD_Avg+wind_speed+VWC+Sedge+Grass+Out_of_Basin,0.19360099707865402,99,99,0.03341366698738174,0
+99_99,wind_speed+PPFD_Avg+VPD+AirTC_Avg+VWC+Temp+Sedge+Grass+Shrub+Sparse+Upland,0.17173142353424503,99,99,0.030634609253695416,0
