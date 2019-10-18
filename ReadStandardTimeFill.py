@@ -1,11 +1,13 @@
+
 import numpy as np
 import pandas as pd 
 from sklearn.preprocessing import StandardScaler
 from sklearn.externals import joblib
 
-class ReadStandardTimeFill:
-    def __init__(self,params,Name,CombineKeys=[],Conversions=[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600],resample=None):
+class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
+    def __init__(self,params,Name,CombineKeys=[],Conversions=[1,1],resample=None):
         self.Master = pd.read_csv(params['Dpath']+Name,delimiter = ',',header = 0,na_values = -9999)
+        self.Master.loc[self.Master['VWC']<.5,'VWC']=np.nan
         self.Master = self.Master.set_index(pd.DatetimeIndex(pd.to_datetime(self.Master['datetime'])))
         self.Master['DOY2'] = self.Master.index.dayofyear*1.0
         self.Master['HR'] = self.Master.index.hour*1.0
@@ -20,7 +22,7 @@ class ReadStandardTimeFill:
         if resample != None:
             self.Master=self.Master.resample(resample).mean()
         
-    def Scale(self,y_var,X_vars,ScalePath = None,Project=False):
+    def Scale(self,y_var,X_vars,ScalePath = None,Project=False,fillTarget=None):
         self.y_var = y_var
         if Project == False:
             self.Data = self.Master[np.isfinite(self.Master[y_var])]
@@ -47,7 +49,11 @@ class ReadStandardTimeFill:
             self.XScaled = joblib.load(ScalePath+'X_scaler.save') 
         # self.XScaled = XStandard.fit(X)
         self.X = self.XScaled.transform(X)
-        Filling = self.Master[X_vars]
+        if fillTarget is None:
+            Filling = self.Master[X_vars]
+        else:
+            Filling = fillTarget[X_vars]
+
         Filling = Filling.interpolate().bfill()
         Filling = Filling.interpolate().ffill()
         #XStandard = StandardScaler()

@@ -21,17 +21,17 @@ def Params(Func,target,MP = True,processes = 3):
     else:params['proc']=processes
     if Func == 'Full':
         K = 30
-        splits_per_mod = 3
+        # splits_per_mod = 3
     elif Func == 'Test':
         K = 4
-        splits_per_mod = 2
+        # splits_per_mod = 2
     elif Func == 'Single':
         K = 1
-        splits_per_mod = 1
+        # splits_per_mod = 1
     params['K'] = K
     params['epochs'] = 1000
     params['target'] = target
-    params['splits_per_mod'] = splits_per_mod
+    # params['splits_per_mod'] = splits_per_mod
     params['Save'] = {}
     params['Save']['Weights']=True
     params['Save']['Model']=True
@@ -50,7 +50,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
     from keras.constraints import nonneg
-    patience=2
+    patience=10
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.Session(config=config)
@@ -59,6 +59,7 @@ def Dense_Model(params,inputs,lr=1e-4,patience=2):
     adam = keras.optimizers.Adam(lr = lr)
     gpu_list = []
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
+    print(params['Save']['Weights'])
     for i in range(NUM_GPU): gpu_list.append('gpu(%d)' % i)
     if params['Loss'] == 'Boot_Loss':
         model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer,kernel_constraint=nonneg()))
@@ -80,12 +81,14 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
     np.random.seed(params['iteration'])
     from keras import backend as K
     Mod,callbacks = Dense_Model(params,X_train.shape[1])
+    print(Mod)
     batch_size=100
+    print(params)#,X_train,y_train,X,y)
     Mod.fit(X_train, # Features
             y_train, # Target vector
             epochs=epochs, # Number of epochs
             callbacks=callbacks, # Early stopping
-            verbose=0, # Print description after each epoch
+            verbose=1, # Print description after each epoch
             batch_size=batch_size, # Number of observations per batch
             # validation_data=(X_test, y_test),# Data for evaluation
             validation_split=params['validation_split']) # Validation Fracton
@@ -117,7 +120,8 @@ def TTV_Split(iteration,params,X,y):
         ones_val *= 0
         ones = np.append(ones,ones_val)
     else:
-        Y_hat=Train_DNN(params,X_train,y_train,X_test,y_test)
+        print(y_train,y_test)
+        Y_hat=Train_DNN(params,X,y,X_test,y_test)
         y_true = np.append(y_train,y_test,axis=0)
         X_true = np.append(X_train,X_test,axis=0)
         index = np.append(i_train,i_test,axis=0)
@@ -138,10 +142,15 @@ def Bootstrap(iteration,params,X,y):
 def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_val):
     Y_hat_train_bar=np.nanmean(Y_hat_train,axis=0)
     Y_hat_val_bar=np.nanmean(Y_hat_val,axis=0)
+
     Y_hat_train_var = 1/(np.nansum(count_train)-1)*np.nansum((Y_hat_train - Y_hat_train_bar)**2,axis=0)
     Y_hat_val_var = 1/(np.nansum(count_val)-1)*np.nansum((Y_hat_val - Y_hat_val_bar)**2,axis=0)
     r2_train = np.maximum((y_true[0,:]-Y_hat_train_bar)**2-Y_hat_train_var,0)
     r2_val = np.maximum((y_true[0,:]-Y_hat_val_bar)**2-Y_hat_val_var,0)
+    # print(Y_hat_train_var.shape,
+    # Y_hat_val_var.shape,
+    # r2_train.shape,
+    # r2_val.shape)
 
     params['Loss'] = 'Boot_Loss'
     params['Validate'] = False
@@ -165,10 +174,12 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     joblib.dump(YStandard, params['Spath']+scaler_filename) 
     scaler_filename = "XVar_scaler.save"
     joblib.dump(XStandard, params['Spath']+scaler_filename) 
+    print('Var!!')
     init=1#int(np.random.rand(1)[0]*100)
     Y_hat_var,y_true_var,X_true_var,index_var,ones_var = TTV_Split(init,params,X,y)
     Y_hat_var = YScaled.inverse_transform(Y_hat_var.reshape(-1,1))
     y_true_var = YScaled.inverse_transform(y_true_var.reshape(-1,1))
+    # print(Y_hat_var,Y_hat_var.shape)
     MSE = []
     if params['Eval'] == True:
         for i in range(params['K']):
