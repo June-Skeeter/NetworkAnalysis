@@ -120,7 +120,7 @@ def TTV_Split(iteration,params,X,y):
         ones_val *= 0
         ones = np.append(ones,ones_val)
     else:
-        print(y_train,y_test)
+        # print(y_train,y_test)
         Y_hat=Train_DNN(params,X,y,X_test,y_test)
         y_true = np.append(y_train,y_test,axis=0)
         X_true = np.append(X_train,X_test,axis=0)
