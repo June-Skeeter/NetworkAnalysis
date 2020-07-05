@@ -1,19 +1,37 @@
 
 import numpy as np
 import pandas as pd 
-from sklearn.preprocessing import StandardScaler
-from sklearn.externals import joblib
+from sklearn.preprocessing import StandardScaler, Normalizer, MinMaxScaler
+# from sklearn.externals import joblib
+import joblib
+import os
 
 class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
-    def __init__(self,params,Name,CombineKeys=[],Conversions=[1,1],resample=None):
+    def __init__(self,params,Name,CombineKeys=[],Conversions=[1,1e3],resample=None,Const=False,FPFill=None):
         self.Master = pd.read_csv(params['Dpath']+Name,delimiter = ',',header = 0,na_values = -9999)
-        self.Master.loc[self.Master['VWC']<.5,'VWC']=np.nan
+        # self.Master.loc[self.Master['VWC']<.5,'VWC']=np.nan
         self.Master = self.Master.set_index(pd.DatetimeIndex(pd.to_datetime(self.Master['datetime'])))
         self.Master['DOY2'] = self.Master.index.dayofyear*1.0
         self.Master['HR'] = self.Master.index.hour*1.0
         self.Master['fco2'] *= Conversions[0]
         self.Master['ER'] *= Conversions[0]
         self.Master['fch4'] *= Conversions[1]
+        # if FPFill is not None:
+        #     self.bins = np.arange(0,360.1,FPFill[0])
+        #     self.Master['Bins'] = pd.cut(self.Master['wind_dir'],bins=self.bins,labels = (self.bins[0:-1]+self.bins[1:])/2)
+        #     FPFill[1].append('Bins')
+        #     GRp = self.Master[FPFill[1]].groupby('Bins').mean()
+        #     for index, row in self.Master.iterrows():
+        #         if np.isnan(row[FPFill[1][0]])==True:
+        #             d = row['Bins']
+        #             try:
+        #                 self.Master.loc[self.Master.index==index,FPFill[1][:-1]]=GRp.loc[GRp.index==d,FPFill[1][:-1]].values
+        #             except:
+        #                 pass
+        #     self.Master=self.Master.drop(columns='Bins')
+
+        if Const==True:
+            self.Master['Constant']=1
         self.params=params
         if len(CombineKeys) >0:
             for i in range(0,len(CombineKeys),2):
@@ -26,24 +44,26 @@ class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
         self.y_var = y_var
         if Project == False:
             self.Data = self.Master[np.isfinite(self.Master[y_var])]
-            self.y = self.Data[y_var].values
-            self.Ytru = self.y+0.0
+        self.y = self.Data[y_var].values
+        self.Ytru = self.y+0.0
         self.Data = self.Data.interpolate().bfill()
         self.Data = self.Data.interpolate().ffill()
         if ScalePath is None:
             YStandard = StandardScaler()
+            # YStandard = MinMaxScaler()
             self.YScaled = YStandard.fit(self.y.reshape(-1, 1))
             Yscale = self.YScaled.transform(self.y.reshape(-1, 1))
             self.y = np.ndarray.flatten(Yscale)
         else:
             self.YScaled = joblib.load(ScalePath+'Y_scaler.save') 
             self.YvarScaled = joblib.load(ScalePath+'YVar_scaler.save')
-            # Yscale = self.YScaled.transform(self.y.reshape(-1, 1))
-            # self.y = np.ndarray.flatten(Yscale)
+            Yscale = self.YScaled.transform(self.y.reshape(-1, 1))
+            self.y = np.ndarray.flatten(Yscale)
         X = self.Data[X_vars]
         self.input_shape = len(X_vars)
         if ScalePath is None:
             XStandard = StandardScaler()
+            # XStandard = MinMaxScaler()
             self.XScaled = XStandard.fit(X)
         else:
             self.XScaled = joblib.load(ScalePath+'X_scaler.save') 
@@ -56,10 +76,12 @@ class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
 
         Filling = Filling.interpolate().bfill()
         Filling = Filling.interpolate().ffill()
-        #XStandard = StandardScaler()
-        #self.XFillScaled= XStandard.fit(Filling)
         self.X_fill = self.XScaled.transform(Filling)
         if ScalePath is None:
+            try:
+                os.mkdir(self.params['Spath'])
+            except:
+                pass
             scaler_filename = "Y_scaler.save"
             joblib.dump(self.YScaled, self.params['Spath']+scaler_filename) 
             scaler_filename = "X_scaler.save"
