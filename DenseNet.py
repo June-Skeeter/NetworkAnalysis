@@ -17,12 +17,12 @@ import time
 def Boot_Loss(y_true,y_pred):
     return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
 
-def Params(Func,target,MP=True,processes=3,L=1,memory=.3):
+def Params(Func,target,MP=True,processes=3,L=1,memory=.3,Act='relu'):
     params = {}
     if MP == False:params['proc']=1
     else:params['proc']=processes
     if Func == 'Full':
-        K = 30
+        K = 100
         # splits_per_mod = 3
     elif Func == 'Test':
         K = 3
@@ -43,12 +43,13 @@ def Params(Func,target,MP=True,processes=3,L=1,memory=.3):
     params['iteration'] = 1
     params['Verbose'] = 0
     params['Eval'] = True
-    params['patience']=5
+    params['patience']=2
     params['HiddenLayers']=L
     params['N']=None
+    params['Activation']=Act
     return(params)
 
-def Dense_Model(params,inputs,lr=1e-4):
+def Dense_Model(params,inputs,lr=1e-5):
     import keras
     from keras.models import Sequential
     from keras.layers import Dense, Activation, Dropout
@@ -72,7 +73,7 @@ def Dense_Model(params,inputs,lr=1e-4):
         model.add(Dense(1,activation='elu',kernel_constraint=nonneg()))
         model.compile(loss=Boot_Loss, optimizer='adam')
     elif params['HiddenLayers']==1:
-        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))
+        model.add(Dense(params['N'], input_dim=inputs,activation=params['Activation'],kernel_initializer=initializer))
         # model.add(Dense(params['N'], input_dim=inputs,activation='sigmoid',kernel_initializer=initializer))#,kernel_constr
         model.add(Dense(1))
         # model.add(Dense(1,activation='elu',kernel_constraint=nonneg()))
@@ -84,8 +85,10 @@ def Dense_Model(params,inputs,lr=1e-4):
         model.add(Dense(1))
         model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
+        # callbacks = [EarlyStopping(monitor='val_loss', patience=params['patience'],verbose=0),#params['Verbose']),
+        #      ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
         callbacks = [EarlyStopping(monitor='val_loss', patience=params['patience'],verbose=0),#params['Verbose']),
-             ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='val_loss', save_best_only=True)]
+             ModelCheckpoint(filepath=params['Spath']+params['Sname']+str(params['iteration'])+'.h5', monitor='loss', save_best_only=True)]
     else:
         callbacks = [EarlyStopping(monitor='val_loss', patience=params['patience'])]
     return(model,callbacks)
@@ -104,7 +107,8 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
             verbose=params['Verbose'], # Print description after each epoch
             batch_size=batch_size, # Number of observations per batch
             # validation_data=(X_test, y_test),# Data for evaluation
-            validation_split=params['validation_split']) # Validation Fracton
+            validation_split=params['validation_split']
+            ) # Validation Fracton
     # X_train = np.append(X_train,X_test,axis=0)
     # with open(params['Spath']+params['Sname']+str(params['iteration'])+'.txt', 'w') as f:
     #     print(history.history,file=f)
@@ -117,28 +121,15 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
             json_file.write(model_json)
     return(Y_target)#,history)#,y_val,Rsq)
 
-# def TTV_Split(iteration,params,X,y):
-#     params['iteration'] = iteration
-#     if params['iteration']>0 and params['Loss'] != 'Variance_Loss' and params['Loss']!= 'Boot_Loss':
-#         params['Save']['Model'] = False
-#     indicies = np.arange(0,y.shape[0],dtype=int)
-#     ones = np.ones(y.shape[0],dtype=int)
-#     X_train,X_test,y_train,y_test,i_train,i_test,ones_train,ones_test=train_test_split(X,y,indicies,ones, test_size=.3, random_state=params['iteration'])#0.2s
-
-#     Y_hat=Train_DNN(params,X,y,X_test,y_test)
-#     y_true = np.append(y_train,y_test,axis=0)
-#     X_true = np.append(X_train,X_test,axis=0)
-#     index = np.append(i_train,i_test,axis=0)
-#     ones = np.append(ones_train,ones_test)
-#     return(Y_hat,y_true,X_true,index,ones)
 
 
-def Bootstrap(iteration,params,X,y):
+
+def Bootstrap(iteration,params,X,y,Stratify=None):
     params['iteration']=iteration
     np.random.seed(params['iteration'])
     ones = np.ones(y.shape[0],dtype=int)
     indicies = np.arange(0,y.shape[0],dtype=int)
-    X_train,y_train = resample(X,y, n_samples=y.shape[0])
+    X_train,y_train = resample(X,y, n_samples=y.shape[0],stratify=Stratify)
     Test = np.array([i for i,x in zip(indicies,y) if x.tolist() not in y_train.tolist()]) 
     ones[Test] *= 0
     # Y_hat,history=
@@ -274,8 +265,10 @@ def Derivatives(file,params,X,y):
     for i in range(X.shape[0]):
         Ip = X[i]
         H1 = (((Ip*W[0].T)).sum(axis=1)+W[1])
-        H1 = np.maximum(H1,np.zeros(H1.shape[0]))
-        # H1 = 1/(1+np.exp(-H1))
+        if params['Activation'] == 'relu':
+            H1 = np.maximum(H1,np.zeros(H1.shape[0]))
+        if params['Activation'] == 'sigmoid':
+            H1 = 1/(1+np.exp(-H1))
         H2 = (H1*W[2].T).sum()+W[3]
         Op.append(H2)
     y = YStandard.transform(y.reshape(-1,1))
