@@ -1,3 +1,11 @@
-,Model,MSE,Size,Number,HiddenNodes,SE,r2,Performance,K,Thresh
-17_0,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+Active_Layer_1+u*+wind_speed+air_pressure+Wind_Direction,77.12463016058723,17,0,49,11.679245412699327,0.6999418893483464,0,10,88.80387557328656
-9_1,AirTC_Avg+VPD+PPFD_Avg+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_15_2+Wind_Direction,123.7548972473543,9,1,88,11.398913461455864,0.5185239712059332,0,10,135.15381070881017
+,Model,MSE,Size,Nodes,SE,r2,Performance,K,Thresh
+17_78,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+u*+wind_speed+air_pressure+Wind_Direction,70.55463963718827,17,78,7.671749338277145,0.7254583201245524,0,30,78.22638897546543
+17_39,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+u*+wind_speed+air_pressure+Wind_Direction,76.74303407897114,17,39,10.041021368723396,0.7013780864997257,0,30,86.78405544769453
+17_26,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+u*+wind_speed+air_pressure+Wind_Direction,82.44343141869189,17,26,12.097926941533629,0.6791967435058117,0,30,94.54135836022552
+17_19,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+u*+wind_speed+air_pressure+Wind_Direction,84.35465071014723,17,19,11.76839552745539,0.6717598214609297,0,30,96.12304623760261
+17_15,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+u*+wind_speed+air_pressure+Wind_Direction,85.85018291060183,17,15,11.901629253745998,0.665940417879082,0,30,97.75181216434783
+11_118,NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_15_1+Temp_5_2+u*+wind_speed+air_pressure+Wind_Direction,76.17253884614608,11,118,7.472249940246033,0.7035979932328071,0,30,83.64478878639211
+11_59,NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_15_1+Temp_5_2+u*+wind_speed+air_pressure+Wind_Direction,78.30401466256853,11,59,9.412878999113872,0.6953040106646349,0,30,87.7168936616824
+11_39,NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_15_1+Temp_5_2+u*+wind_speed+air_pressure+Wind_Direction,84.47745040922092,11,39,9.641531230959576,0.6712819842011087,0,30,94.1189816401805
+11_29,NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_15_1+Temp_5_2+u*+wind_speed+air_pressure+Wind_Direction,87.11507764039787,11,29,11.583382610762465,0.6610184690778473,0,30,98.69846025116034
+11_23,NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Temp_15_1+Temp_5_2+u*+wind_speed+air_pressure+Wind_Direction,87.50364922051303,11,23,10.496975054356913,0.6595064622855904,0,30,98.00062427486993

@@ -22,7 +22,7 @@ def Params(Func,target,MP=True,processes=3,L=1,memory=.3,Act='relu'):
     if MP == False:params['proc']=1
     else:params['proc']=processes
     if Func == 'Full':
-        K = 100
+        K = 30
         # splits_per_mod = 3
     elif Func == 'Test':
         K = 3
@@ -100,6 +100,12 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
     Mod,callbacks = Dense_Model(params,X_train.shape[1])
     # print(Mod)
     batch_size=int(y_train.shape[0]*.05)
+#     print(X_train,
+# y_train,
+# epochs,
+# callbacks,params['Verbose'], 
+# batch_size,
+# params['validation_split'])
     history = Mod.fit(X_train, # Features
             y_train, # Target vector
             epochs=epochs, # Number of epochs
@@ -287,7 +293,7 @@ def Derivatives(file,params,X,y):
             output = float(Op[j])
             Xj = X[j][i]
             if np.isnan(target)==False:
-                H1 = ((Xj*wi[i,:]))+wc[i]
+                H1 = ((Xj*wi[i,:]))+wc#[i]
                 AD = np.maximum(Z,H1)
                 AD[AD>0]=1
                 # AD = H1*(1-H1)

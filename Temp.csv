@@ -1,2 +1,2 @@
-,Model,MSE,Size,Number,HiddenNodes,SE,r2,Performance,K
-8_1,VPD+NR_Wm2_Avg+PPFD_Avg+Temp_5_1+Temp_5_2+Active_Layer_1+wind_speed+Wind_Direction,0.19369516034284903,8,1,142,0.014228722581925243,0.9138718832024986,0,3
+,Model,MSE,Size,Nodes,SE,r2,Performance,K
+20_50,AirTC_Avg+VPD+NR_Wm2_Avg+PPFD_Avg+Table_1+VWC_2+Active_Layer_1+Total_Rain_mm_Tot+Delta_Table_1+Delta_air_pressure+Temp_2_5_1+Temp_5_1+Temp_15_1+Temp_2_5_2+Temp_5_2+Temp_15_2+u*+wind_speed+air_pressure+Wind_Direction,77.08183669303048,20,50,3.9251303811549874,0.7053200666756532,0,3
