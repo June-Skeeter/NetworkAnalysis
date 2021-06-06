@@ -17,17 +17,20 @@ import time
 def Boot_Loss(y_true,y_pred):
     return(K.sum(K.log(y_pred)+y_true/y_pred)/2)
 
-def Params(Func,target,MP=True,processes=3,L=1,memory=.3,Act='relu'):
+def Params(Path,Scope,target,MP=True,processes=3,L=1,memory=.3,Act='relu'):
     params = {}
+    params['Dpath'] = Path
     if MP == False:params['proc']=1
     else:params['proc']=processes
-    if Func == 'Full':
+    if Scope == 'Full':
         K = 30
         # splits_per_mod = 3
-    elif Func == 'Test':
+    elif Scope == 'Test':
+        K = 6
+    elif Scope == 'Smol':
         K = 3
         # splits_per_mod = 2
-    elif Func == 'Single':
+    else :
         K = 1
         # splits_per_mod = 1
     params['K'] = K
@@ -39,17 +42,18 @@ def Params(Func,target,MP=True,processes=3,L=1,memory=.3,Act='relu'):
     params['Save']['Model']=True
     params['Loss']='mean_squared_error'
     params['Memory']=memory
-    params['validation_split'] = 0.2
     params['iteration'] = 1
     params['Verbose'] = 0
     params['Eval'] = True
-    params['patience']=2
+    params['validation_split'] = 0.1
+    # params['validation_split'] = 0.3
+    params['patience']=10
     params['HiddenLayers']=L
     params['N']=None
     params['Activation']=Act
     return(params)
 
-def Dense_Model(params,inputs,lr=1e-5):
+def Dense_Model(params,inputs,lr=1e-4):
     import keras
     from keras.models import Sequential
     from keras.layers import Dense, Activation, Dropout
@@ -74,14 +78,15 @@ def Dense_Model(params,inputs,lr=1e-5):
         model.compile(loss=Boot_Loss, optimizer='adam')
     elif params['HiddenLayers']==1:
         model.add(Dense(params['N'], input_dim=inputs,activation=params['Activation'],kernel_initializer=initializer))
+        # model.add(Dropout(0.1))
         # model.add(Dense(params['N'], input_dim=inputs,activation='sigmoid',kernel_initializer=initializer))#,kernel_constr
         model.add(Dense(1))
         # model.add(Dense(1,activation='elu',kernel_constraint=nonneg()))
         model.compile(loss=params['Loss'], optimizer='adam')
     else:
-        model.add(Dense(params['N'], input_dim=inputs,activation='relu',kernel_initializer=initializer))
+        model.add(Dense(params['N'], input_dim=inputs,activation=params['Activation'],kernel_initializer=initializer))
         model.add(Dropout(0.1))
-        model.add(Dense(int(params['N']/2), activation='relu'))
+        model.add(Dense(int(params['N']/2), activation=params['Activation']))
         model.add(Dense(1))
         model.compile(loss=params['Loss'], optimizer='adam')#,context=gpu_list) # - Add if using MXNET
     if params['Save']['Weights'] == True:
@@ -99,7 +104,7 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
     from keras import backend as K
     Mod,callbacks = Dense_Model(params,X_train.shape[1])
     # print(Mod)
-    batch_size=int(y_train.shape[0]*.05)
+    batch_size=int(y_train.shape[0]*.1)
 #     print(X_train,
 # y_train,
 # epochs,
@@ -127,19 +132,20 @@ def Train_DNN(params,X_train,y_train,X,y):#,X_fill):X_test,y_test,
             json_file.write(model_json)
     return(Y_target)#,history)#,y_val,Rsq)
 
-
-
-
 def Bootstrap(iteration,params,X,y,Stratify=None):
     params['iteration']=iteration
     np.random.seed(params['iteration'])
     ones = np.ones(y.shape[0],dtype=int)
     indicies = np.arange(0,y.shape[0],dtype=int)
-    X_train,y_train = resample(X,y, n_samples=y.shape[0],stratify=Stratify)
+    # if Stratify is not None:
+    #     X_train,y_train = resample(X,y, n_samples=y.shape[0],stratify=Stratify)
+    # else:
+    X_train,y_train = resample(X,y,n_samples=y.shape[0])
     Test = np.array([i for i,x in zip(indicies,y) if x.tolist() not in y_train.tolist()]) 
     ones[Test] *= 0
     # Y_hat,history=
     Y_hat = Train_DNN(params,X_train,y_train,X,y)
+
     Cons,Derivs,Outputs = Derivatives(iteration,params,X,y)
     return(Y_hat,y,X,ones,Cons,Derivs,Outputs)#,history)
 
@@ -151,13 +157,10 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     Y_hat_val_var = 1/(np.nansum(count_val)-1)*np.nansum((Y_hat_val - Y_hat_val_bar)**2,axis=0)
     r2_train = np.maximum((y_true[0,:]-Y_hat_train_bar)**2-Y_hat_train_var,0)
     r2_val = np.maximum((y_true[0,:]-Y_hat_val_bar)**2-Y_hat_val_var,0)
-
-
     params['Loss'] = 'Boot_Loss'
     params['Validate'] = False
     params['Sname'] = 'Var'
     params['Save']['Model'] = True
-
     y = r2_val
     Valid = np.where(np.isnan(y)==False)
     y = y[Valid]
@@ -170,8 +173,6 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
     XScaled = XStandard.fit(X)#.reshape(-1, 1))
     y = YScaled.transform(y.reshape(-1, 1))
     X = XScaled.transform(X)
-
-
     scaler_filename = "YVar_scaler.save"
     joblib.dump(YStandard, params['Spath']+scaler_filename) 
     scaler_filename = "XVar_scaler.save"
@@ -196,13 +197,22 @@ def Calculate_Var(params,Y_hat_train,Y_hat_val,y_true,X_true,count_train,count_v
                 print('No Go'+str(i))
                 pass
     MSE = np.asanyarray(MSE)
+    RMSE = MSE ** .5
+    # mse = MSE.mean(axis=0)
+    # rmse = RMSE.mean(axis=0)
+    # SE = RMSE.std(axis=0)/params['K']**.5
     Test = pd.DataFrame(data={'target':Y_hat_val_bar,'y':y_true[i]}).dropna()
     # print(Y_hat_val_bar.shape,y_true.mean(axis=0).shape)
     # MSE.append(metrics.mean_squared_error(Test['target'],Test['y']))
     mse = metrics.mean_squared_error(Test['y'],Test['target'])
+    rmse = mse**.5
     r2 = metrics.r2_score(Test['y'],Test['target'])
-    SE = (((MSE-mse)**2).sum()/(params['K']-1))**.5
-    return(mse,SE,r2)
+
+    # SE = ((((MSE-mse)**2).sum()/(params['K']))**.5)/(params['K']**.5)
+    SE = (MSE.std()/params['K']**.5)
+    
+    # SE = ((MSE-mse).std()/params['K']**.5)
+    return(mse,rmse,SE,r2,y_true,Y_hat_val)
 
 def Sort_outputs(k,params,Y_hat,y_true,X_true,ones):
     ones_train = ones+0.0
@@ -268,38 +278,51 @@ def Derivatives(file,params,X,y):
 
     YStandard = joblib.load(params['Spath']+"Y_scaler.save")
     Op = []
-    for i in range(X.shape[0]):
-        Ip = X[i]
-        H1 = (((Ip*W[0].T)).sum(axis=1)+W[1])
-        if params['Activation'] == 'relu':
-            H1 = np.maximum(H1,np.zeros(H1.shape[0]))
-        if params['Activation'] == 'sigmoid':
-            H1 = 1/(1+np.exp(-H1))
-        H2 = (H1*W[2].T).sum()+W[3]
-        Op.append(H2)
-    y = YStandard.transform(y.reshape(-1,1))
-    Op = np.array(Op)#YStandard.inverse_transform(np.array(Op).reshape(-1,1))
-    Cons = []
     wi = W[0]
     wc = W[1]
     wo = W[2]
     nh = W[2].shape[0]
     Z = np.zeros(nh)
+    for i in range(X.shape[0]):
+        Ip = X[i]
+        H1 = (((Ip*W[0].T)).sum(axis=1)+W[1])
+        # print(H1.shape)
+        if params['Activation'] == 'relu':
+            H1 = np.maximum(H1,np.zeros(H1.shape[0]))
+            # AD = np.maximum(Z,H1)
+            # AD[AD>0]=1
+        if params['Activation'] == 'sigmoid':
+            H1 = 1/(1+np.exp(-H1))
+        #     AD = H1*(1-H1)
+        # print(AD)
+        H2 = (H1*W[2].T).sum()+W[3]
+        Op.append(H2)
+    y = YStandard.transform(y.reshape(-1,1))
+    Op = np.array(Op)#YStandard.inverse_transform(np.array(Op).reshape(-1,1))
+    Cons = []
+    # print(wi.shape,wc.shape,wo.shape)
     Derivs = []
+    # print(X.shape)
     for i in range(X.shape[1]):
+
         dj=[]
+
         for j in range(y.shape[0]):
             target = y[j]
             output = float(Op[j])
             Xj = X[j][i]
             if np.isnan(target)==False:
                 H1 = ((Xj*wi[i,:]))+wc#[i]
-                AD = np.maximum(Z,H1)
-                AD[AD>0]=1
-                # AD = H1*(1-H1)
+                if params['Activation']=='relu':
+                    AD = np.maximum(Z,H1)
+                    AD[AD>0]=1
+                else:
+                    H1 = 1/(1+np.exp(-H1))
+                    AD = H1*(1-H1)
+                # print(wo,AD,H1,wi,wc)
                 Sum = np.array([wo[h]*AD[h]*wi[i,h] for h in range(nh)]).sum()
-                # Sum = np.array([wo[i,:]*AD*wi for h in range(nh)]).sum()
-                # Sj = (target-output)*H2
+                # print(Sum)
+                # print()
                 Sj = 1
                 dj.append(Sj*Sum)
         dji = np.array(dj)

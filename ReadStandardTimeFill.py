@@ -7,28 +7,18 @@ import joblib
 import os
 
 class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
-    def __init__(self,params,Name,CombineKeys=[],Conversions=[1,1e3],resample=None,Const=False,FPFill=None):
+    def __init__(self,params,Name,CombineKeys=[],Conversions=[1,1e3],resample=None,Const=False,FPVars=None):
         self.Master = pd.read_csv(params['Dpath']+Name,delimiter = ',',header = 0,na_values = -9999)
         # self.Master.loc[self.Master['VWC']<.5,'VWC']=np.nan
         self.Master = self.Master.set_index(pd.DatetimeIndex(pd.to_datetime(self.Master['datetime'])))
         self.Master['DOY2'] = self.Master.index.dayofyear*1.0
         self.Master['HR'] = self.Master.index.hour*1.0
         self.Master['fco2'] *= Conversions[0]
+        # self.Master['ER'] = np.nan
+        self.Master.loc[self.Master['Daytime']==0,'ER']==self.Master.loc[self.Master['Daytime']==0,'co2_flux']
+        self.Master.loc[self.Master['Daytime']==1,'ER']= np.nan
         self.Master['ER'] *= Conversions[0]
         self.Master['fch4'] *= Conversions[1]
-        # if FPFill is not None:
-        #     self.bins = np.arange(0,360.1,FPFill[0])
-        #     self.Master['Bins'] = pd.cut(self.Master['wind_dir'],bins=self.bins,labels = (self.bins[0:-1]+self.bins[1:])/2)
-        #     FPFill[1].append('Bins')
-        #     GRp = self.Master[FPFill[1]].groupby('Bins').mean()
-        #     for index, row in self.Master.iterrows():
-        #         if np.isnan(row[FPFill[1][0]])==True:
-        #             d = row['Bins']
-        #             try:
-        #                 self.Master.loc[self.Master.index==index,FPFill[1][:-1]]=GRp.loc[GRp.index==d,FPFill[1][:-1]].values
-        #             except:
-        #                 pass
-        #     self.Master=self.Master.drop(columns='Bins')
 
         if Const==True:
             self.Master['Constant']=1
@@ -39,6 +29,18 @@ class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
         self.TimeSteps=0
         if resample != None:
             self.Master=self.Master.resample(resample).mean()
+        if FPVars != None:
+            self.FPFill(FPVars=FPVars[0],bad=FPVars[1])
+
+    def FPFill(self,FPVars,bad):
+        self.Master['WindBins'] = (self.Master['wind_dir']/10).round()
+        Mn = self.Master[FPVars].groupby(FPVars[-1]).mean()
+        for i, row in self.Master.loc[np.isnan(self.Master[FPVars[0]])==True].iterrows():
+            if row[FPVars[-1]]!=bad and np.isnan(row[FPVars[-1]])==False:
+                self.Master.loc[self.Master.index==i,FPVars[:-2]] = Mn.loc[Mn.index==row[FPVars[-1]],FPVars[:-2]].values[0]
+                self.Master.loc[self.Master.index==i,FPVars[-2]] = 1 - self.Master.loc[self.Master.index==i,FPVars[:-2]].values[0].sum()
+                # print(self.Master.loc[self.Master.index==i,FPVars[-2]],(1 - self.Master.loc[self.Master.index==i,FPVars[:-2]].sum()))
+        # Mn = self.Master[FPVars].groupby(FPVars[-1]).count()
         
     def Scale(self,y_var,X_vars,ScalePath = None,Project=False,fillTarget=None):
         self.y_var = y_var
@@ -50,7 +52,7 @@ class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
         self.Data = self.Data.interpolate().ffill()
         if ScalePath is None:
             YStandard = StandardScaler()
-            # YStandard = MinMaxScaler()
+            # YStandard = MinMaxScaler(feature_range=(.3, .7))
             self.YScaled = YStandard.fit(self.y.reshape(-1, 1))
             Yscale = self.YScaled.transform(self.y.reshape(-1, 1))
             self.y = np.ndarray.flatten(Yscale)
