@@ -15,9 +15,12 @@ class ReadStandardTimeFill:#[1e-6 * 44.0095 *3600,1e-3 * 16.04246 *3600]
         self.Master['HR'] = self.Master.index.hour*1.0
         self.Master['fco2'] *= Conversions[0]
         # self.Master['ER'] = np.nan
-        self.Master.loc[self.Master['Daytime']==0,'ER']==self.Master.loc[self.Master['Daytime']==0,'co2_flux']
-        self.Master.loc[self.Master['Daytime']==1,'ER']= np.nan
-        self.Master['ER'] *= Conversions[0]
+        try:
+            self.Master.loc[self.Master['Daytime']==0,'ER']==self.Master.loc[self.Master['Daytime']==0,'co2_flux']
+            self.Master.loc[self.Master['Daytime']==1,'ER']= np.nan
+            self.Master['ER'] *= Conversions[0]
+        except:
+            self.Master['ER']=0
         self.Master['fch4'] *= Conversions[1]
 
         if Const==True:
