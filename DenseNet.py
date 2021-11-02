@@ -28,7 +28,7 @@ def Params(Path,Scope,target,MP=True,processes=3,L=1,memory=.3,Act='relu'):
     elif Scope == 'Test':
         K = 6
     elif Scope == 'Smol':
-        K = 3
+        K = 2
         # splits_per_mod = 2
     else :
         K = 1
@@ -61,12 +61,13 @@ def Dense_Model(params,inputs,lr=1e-4):
     from keras.callbacks import EarlyStopping,ModelCheckpoint,LearningRateScheduler
     import tensorflow as tf
     from keras.constraints import nonneg
+    # tf.random.set_seed(params['iteration'])
     # patience=10
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = params['Memory']
     session = tf.compat.v1.Session(config=config)
     model = Sequential()#'relu'
-    NUM_GPU = 1 # or the number of GPUs available on your machin
+    NUM_GPU = 1 # or the number of GPUs available on your machine
     adam = keras.optimizers.Adam(lr = lr)
     gpu_list = []
     initializer = keras.initializers.glorot_uniform(seed=params['iteration'])
